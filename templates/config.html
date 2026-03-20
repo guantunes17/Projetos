@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+{% set active = 'config' %}
+{% block content %}
+
+<div class="page-header">
+  <div class="page-icon">⚙️</div>
+  <div>
+    <h1>Configurações</h1>
+    <p class="subtitle">Dia padrão de extração · Caminhos de dados</p>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- Dia padrão de extração -->
+<div class="card">
+  <div class="section-title">Dia padrão de extração mensal</div>
+  <p class="hint" style="margin-top:6px">
+    Define o dia do mês em que os relatórios devem ser gerados (padrão para todos os módulos que não possuem dia individual configurado).
+  </p>
+  <div style="display:flex; align-items:center; gap:12px; margin-top:12px">
+    <input type="number" id="dia_extracao" value="{{ dia_extracao }}" min="1" max="28"
+           style="width:80px">
+    <span style="color:var(--sub); font-size:13px">dia do mês (1 – 28)</span>
+    <button class="btn btn-sm" style="background:#4f8ef7; color:white" onclick="salvarDia()">
+      💾 Salvar
+    </button>
+    <span id="status-dia" class="status"></span>
+  </div>
+</div>
+
+<!-- Caminhos de dados -->
+<div class="card" style="margin-top:16px">
+  <div class="section-title">Diretório de dados (volume Docker)</div>
+  <div style="margin-top:10px; font-family:monospace; font-size:13px;
+              background:var(--card2); border-radius:6px; padding:10px 14px;
+              color:var(--accent3)">
+    {{ data_dir }}
+  </div>
+  <p class="hint" style="margin-top:8px">
+    Monte este diretório como volume para persistir os dados entre reinicializações do container.
+  </p>
+
+  <div class="section-title" style="margin-top:18px">Subpastas por módulo</div>
+  <table style="width:100%; border-collapse:collapse; font-size:13px; margin-top:10px">
+    <tbody>
+      {% for nome, caminho in pastas.items() %}
+      <tr style="border-bottom:1px solid var(--borda)">
+        <td style="padding:7px 12px; color:var(--sub); width:180px">{{ nome }}</td>
+        <td style="padding:7px 12px; font-family:monospace; color:var(--accent3)">{{ caminho }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function salvarDia() {
+  const dia = parseInt(document.getElementById('dia_extracao').value);
+  if (isNaN(dia) || dia < 1 || dia > 28) {
+    alert('Informe um dia entre 1 e 28.');
+    return;
+  }
+  const st = document.getElementById('status-dia');
+  st.textContent = '⏳ Salvando…';
+  st.className = 'status running';
+
+  const fd = new FormData();
+  fd.append('dia_extracao', dia);
+  fetch('/config', { method: 'POST', body: fd })
+  .then(r => r.json())
+  .then(d => {
+    if (d.ok) {
+      st.textContent = '✅ Salvo';
+      st.className = 'status done';
+    } else {
+      st.textContent = '❌ Erro';
+      st.className = 'status error';
+    }
+  })
+  .catch(() => {
+    st.textContent = '❌ Erro de comunicação';
+    st.className = 'status error';
+  });
+}
+</script>
+{% endblock %}

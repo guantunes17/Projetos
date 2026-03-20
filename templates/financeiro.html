@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+{% set active = 'financeiro' %}
+{% block content %}
+
+<div class="page-header">
+  <div class="page-icon">💰</div>
+  <div>
+    <h1>Financeiro — Visão Geral</h1>
+    <p class="subtitle">Acesse os módulos financeiros pela barra lateral</p>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<div class="card-grid" style="grid-template-columns: repeat(auto-fill, minmax(240px, 1fr))">
+
+  <div class="home-card" style="border-top: 4px solid #10b981">
+    <div class="card-body">
+      <div class="card-icon">📊</div>
+      <div class="card-title">Contas a Pagar / Receber</div>
+      <div class="card-divider"></div>
+      <p style="font-size:12px; color:var(--sub); margin:0">
+        Analisa fluxo de caixa, vencimentos e categorias de despesas e receitas.
+      </p>
+    </div>
+    <div class="card-footer">
+      <a href="/contas" class="btn btn-sm" style="background:#10b981; color:white; width:100%; text-align:center; text-decoration:none; display:block">
+        Acessar →
+      </a>
+    </div>
+  </div>
+
+  <div class="home-card" style="border-top: 4px solid #f59e0b">
+    <div class="card-body">
+      <div class="card-icon">🏭</div>
+      <div class="card-title">Faturamento de Armazenagem</div>
+      <div class="card-divider"></div>
+      <p style="font-size:12px; color:var(--sub); margin:0">
+        Calcula o faturamento por cliente com base em famílias de SKU e preços por m².
+      </p>
+    </div>
+    <div class="card-footer">
+      <a href="/fat_arm" class="btn btn-sm" style="background:#f59e0b; color:white; width:100%; text-align:center; text-decoration:none; display:block">
+        Acessar →
+      </a>
+    </div>
+  </div>
+
+</div>
+
+{% endblock %}

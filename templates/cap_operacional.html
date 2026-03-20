@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+{% set active = 'cap_operacional' %}
+{% block content %}
+
+<div class="page-header">
+  <div class="page-icon">⚙️</div>
+  <div>
+    <h1>Capacidade Operacional</h1>
+    <p class="subtitle">Análise de OS por Depositante — SKUs e Complexidade</p>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<div class="card">
+  <p class="hint" style="margin:0">
+    ℹ&nbsp; Como extrair do Sistema ESL:<br>
+    &nbsp; 1. Relatório → Movimentação de Estoque → Kardex<br>
+    &nbsp; 2. Filtre pelo período desejado<br>
+    &nbsp; 3. Exporte como PDF e selecione abaixo
+  </p>
+</div>
+
+<!-- Upload PDF -->
+<div class="card">
+  <label class="field-label">PDF do Kardex (ESL)</label>
+  <div class="upload-area" id="drop-zone">
+    <span class="upload-icon">📄</span>
+    <span class="upload-text">Clique para selecionar ou arraste o PDF aqui</span>
+    <span class="upload-filename" id="file-name">Nenhum arquivo selecionado</span>
+  </div>
+  <input type="file" id="arquivo" accept=".pdf" style="display:none">
+</div>
+
+<!-- Mês -->
+<div class="card">
+  <label class="field-label" for="mes_ref">Mês de referência</label>
+  <select id="mes_ref">
+    {% for val, label in meses %}
+    <option value="{{ val }}" {% if loop.first %}selected{% endif %}>{{ label }} ({{ val }})</option>
+    {% endfor %}
+  </select>
+</div>
+
+<!-- Parâmetros de complexidade -->
+<div class="card">
+  <div class="section-title">Parâmetros de Complexidade (SKUs/OS)</div>
+  <div style="display:flex; gap:32px; flex-wrap:wrap; margin-top:8px">
+    <div>
+      <label class="field-label" for="lim_media">Média a partir de</label>
+      <div style="display:flex; align-items:center; gap:8px">
+        <input type="number" id="lim_media" value="3" min="1" max="20">
+        <span style="color:var(--sub); font-size:12px">SKUs/OS</span>
+      </div>
+    </div>
+    <div>
+      <label class="field-label" for="lim_alta">Alta a partir de</label>
+      <div style="display:flex; align-items:center; gap:8px">
+        <input type="number" id="lim_alta" value="5" min="1" max="50">
+        <span style="color:var(--sub); font-size:12px">SKUs/OS</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="action-row">
+  <button id="btn-gerar" class="btn" style="background:#e11d48; color:white">
+    ⚙️&nbsp; Gerar Relatório
+  </button>
+  <span id="status" class="status"></span>
+  <a id="btn-download" class="btn-download btn" style="display:none"></a>
+</div>
+
+<div class="log-container">
+  <pre id="log-output" class="log">Aguardando...</pre>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+setupDropZone('drop-zone', 'arquivo', 'file-name');
+
+document.getElementById('btn-gerar').addEventListener('click', function () {
+  const file = document.getElementById('arquivo').files[0];
+  if (!file) { alert('Selecione o PDF do Kardex.'); return; }
+
+  const lm = parseFloat(document.getElementById('lim_media').value);
+  const la = parseFloat(document.getElementById('lim_alta').value);
+  if (isNaN(lm) || isNaN(la) || lm >= la) {
+    alert('O limiar de "Alta" deve ser maior que o de "Média".'); return;
+  }
+
+  const fd = new FormData();
+  fd.append('arquivo',   file);
+  fd.append('mes_ref',   document.getElementById('mes_ref').value);
+  fd.append('lim_media', lm);
+  fd.append('lim_alta',  la);
+
+  startModule('/cap_operacional', fd, {
+    logEl:      document.getElementById('log-output'),
+    btnEl:      this,
+    statusEl:   document.getElementById('status'),
+    downloadEl: document.getElementById('btn-download'),
+    btnText:    '⚙️ Gerar Relatório',
+  });
+});
+</script>
+{% endblock %}

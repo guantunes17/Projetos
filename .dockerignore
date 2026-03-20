@@ -1,0 +1,13 @@
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*.pyo
+.git/
+.env
+data/
+*.ico
+Central_Relatorios_debug.bat
+criar_atalho.py
+teste_pbids.py
+.DS_Store

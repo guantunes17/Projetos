@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Central de Relatórios</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-accent"></div>
+
+    <div class="sidebar-logo">
+      <div class="icon">📊</div>
+      <div class="title">Central de<br>Relatórios</div>
+    </div>
+
+    <div class="sidebar-divider"></div>
+
+    <nav>
+      <a href="/"           class="nav-item {% if active=='home' %}active{% endif %}">🏠&nbsp; Home</a>
+
+      <div class="sidebar-divider"></div>
+
+      <div class="nav-group-label">Operacional</div>
+      <a href="/pedidos"       class="nav-item sub {% if active=='pedidos' %}active{% endif %}">📦&nbsp; Pedidos</a>
+      <a href="/fretes"        class="nav-item sub {% if active=='fretes' %}active{% endif %}">🚚&nbsp; Fretes</a>
+      <a href="/armazenagem"   class="nav-item sub {% if active=='armazenagem' %}active{% endif %}">🏭&nbsp; Armazenagem</a>
+      <a href="/estoque"       class="nav-item sub {% if active=='estoque' %}active{% endif %}">📋&nbsp; Estoque</a>
+      <a href="/produtividade" class="nav-item sub {% if active=='produtividade' %}active{% endif %}">👥&nbsp; Produtividade</a>
+      <a href="/cap_operacional" class="nav-item sub {% if active=='cap_operacional' %}active{% endif %}">⚙️&nbsp; Cap. Operacional</a>
+      <a href="/recebimentos"  class="nav-item sub {% if active=='recebimentos' %}active{% endif %}">📥&nbsp; Recebimentos</a>
+
+      <div class="sidebar-divider"></div>
+
+      <div class="nav-group-label">Financeiro</div>
+      <a href="/financeiro"  class="nav-item sub {% if active=='financeiro' %}active{% endif %}">💰&nbsp; Visão Geral</a>
+      <a href="/contas"      class="nav-item sub {% if active=='contas' %}active{% endif %}">📊&nbsp; Contas</a>
+      <a href="/fat_arm"     class="nav-item sub {% if active=='fat_arm' %}active{% endif %}">🏭&nbsp; Fat. Armazenagem</a>
+
+      <div class="sidebar-divider"></div>
+
+      <a href="/arquivos"  class="nav-item {% if active=='arquivos' %}active{% endif %}">📁&nbsp; Arquivos</a>
+      <a href="/de_para"   class="nav-item {% if active=='de_para' %}active{% endif %}">🔗&nbsp; De-Para SKU</a>
+      <a href="/config"    class="nav-item {% if active=='config' %}active{% endif %}">⚙️&nbsp; Configurações</a>
+    </nav>
+
+    <div class="sidebar-footer">v3.1 · Web Edition</div>
+  </aside>
+
+  <!-- Main content -->
+  <main class="content">
+    <div class="page">
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+
+</div>
+<script src="/static/app.js"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

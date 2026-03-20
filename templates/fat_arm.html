@@ -1,0 +1,174 @@
+{% extends 'base.html' %}
+{% set active = 'fat_arm' %}
+{% block content %}
+
+<div class="page-header">
+  <div class="page-icon">🏭</div>
+  <div>
+    <h1>Faturamento de Armazenagem</h1>
+    <p class="subtitle">Cálculo de faturamento por família de SKU · Preços por m²</p>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- DB Famílias -->
+<div class="db-panel">
+  <div class="db-panel-title">📦 Banco de Famílias de SKU</div>
+  <div class="db-status {{ 'ok' if fam_skus > 0 else 'warn' }}">
+    {% if fam_skus > 0 %}
+      ✅ {{ fam_skus }} SKUs · {{ fam_cli }} clientes · Atualizado: {{ fam_data }}
+    {% else %}
+      ⚠️ DB vazio — carregue o arquivo de famílias antes de gerar
+    {% endif %}
+  </div>
+  <div class="db-btns">
+    <div>
+      <label class="field-label" style="margin-bottom:4px">Arquivo de Famílias (Excel)</label>
+      <input type="file" id="file-fam" accept=".xlsx,.xls" style="display:none">
+      <div style="display:flex; gap:6px">
+        <button class="btn btn-sm" style="background:#1e3a5f; color:white"
+                onclick="document.getElementById('file-fam').click()">
+          📁 Selecionar
+        </button>
+        <button class="btn btn-sm" style="background:#1e3a5f; color:white"
+                onclick="runFatArmDb('carregar_familias','file-fam','log-fam','status-fam',this,'📦 Carregar Famílias')">
+          📦 Carregar Famílias
+        </button>
+      </div>
+      <div id="file-fam-name" style="font-size:11px; color:var(--accent3); margin-top:3px"></div>
+    </div>
+  </div>
+  <div class="log-container" style="margin-top:10px">
+    <pre id="log-fam" class="log" style="min-height:60px; max-height:120px"></pre>
+  </div>
+  <div id="status-fam" class="status" style="margin-top:6px"></div>
+</div>
+
+<!-- DB Preços/Config -->
+<div class="db-panel" style="margin-top:16px">
+  <div class="db-panel-title">💲 Configuração de Preços por m²</div>
+  <div class="db-status {{ 'ok' if preco_cli > 0 else 'warn' }}">
+    {% if preco_cli > 0 %}
+      ✅ {{ preco_cli }} clientes configurados · Atualizado: {{ preco_data }}
+    {% else %}
+      ⚠️ Sem configuração — carregue o arquivo de preços antes de gerar
+    {% endif %}
+  </div>
+  <div class="db-btns">
+    <div>
+      <label class="field-label" style="margin-bottom:4px">Arquivo de Configuração (Excel)</label>
+      <input type="file" id="file-cfg" accept=".xlsx,.xls" style="display:none">
+      <div style="display:flex; gap:6px">
+        <button class="btn btn-sm" style="background:#1e4d3a; color:white"
+                onclick="document.getElementById('file-cfg').click()">
+          📁 Selecionar
+        </button>
+        <button class="btn btn-sm" style="background:#1e4d3a; color:white"
+                onclick="runFatArmDb('carregar_config','file-cfg','log-cfg','status-cfg',this,'💲 Carregar Config')">
+          💲 Carregar Config
+        </button>
+      </div>
+      <div id="file-cfg-name" style="font-size:11px; color:var(--accent3); margin-top:3px"></div>
+    </div>
+  </div>
+  <div class="log-container" style="margin-top:10px">
+    <pre id="log-cfg" class="log" style="min-height:60px; max-height:120px"></pre>
+  </div>
+  <div id="status-cfg" class="status" style="margin-top:6px"></div>
+</div>
+
+<!-- Gerar relatório -->
+<div class="card" style="margin-top:16px">
+  <div class="section-title">Gerar Relatório</div>
+
+  <label class="field-label" style="margin-top:12px">Arquivo de Movimentação</label>
+  <div class="upload-area" id="drop-mov">
+    <span class="upload-icon">📁</span>
+    <span class="upload-text">Clique para selecionar ou arraste o arquivo aqui</span>
+    <span class="upload-filename" id="file-mov-name">Nenhum arquivo selecionado</span>
+  </div>
+  <input type="file" id="arquivo_mov" accept=".xlsx,.xls" style="display:none">
+
+  <label class="field-label" style="margin-top:16px">Arquivo de Volumes (Pico de Estoque)</label>
+  <div class="upload-area" id="drop-vol">
+    <span class="upload-icon">📁</span>
+    <span class="upload-text">Clique para selecionar ou arraste o arquivo aqui</span>
+    <span class="upload-filename" id="file-vol-name">Nenhum arquivo selecionado</span>
+  </div>
+  <input type="file" id="arquivo_volumes" accept=".xlsx,.xls" style="display:none">
+
+  <div style="margin-top:16px">
+    <label class="field-label" for="mes_ref">Mês de referência</label>
+    <select id="mes_ref">
+      {% for val, label in meses %}
+      <option value="{{ val }}" {% if loop.first %}selected{% endif %}>{{ label }} ({{ val }})</option>
+      {% endfor %}
+    </select>
+  </div>
+</div>
+
+<div class="action-row">
+  <button id="btn-gerar" class="btn" style="background:#f59e0b; color:white">
+    🏭&nbsp; Gerar Faturamento
+  </button>
+  <span id="status" class="status"></span>
+  <a id="btn-download" class="btn-download btn" style="display:none"></a>
+</div>
+
+<div class="log-container">
+  <pre id="log-output" class="log">Aguardando...</pre>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('file-fam').addEventListener('change', function () {
+  document.getElementById('file-fam-name').textContent = this.files[0]?.name || '';
+});
+document.getElementById('file-cfg').addEventListener('change', function () {
+  document.getElementById('file-cfg-name').textContent = this.files[0]?.name || '';
+});
+
+setupDropZone('drop-mov', 'arquivo_mov',     'file-mov-name');
+setupDropZone('drop-vol', 'arquivo_volumes', 'file-vol-name');
+
+function runFatArmDb(action, fileInputId, logId, statusId, btnEl, btnText) {
+  const file = document.getElementById(fileInputId)?.files[0];
+  if (!file) { alert('Selecione um arquivo primeiro.'); return; }
+
+  const fd = new FormData();
+  fd.append('action',  action);
+  fd.append('arquivo', file);
+
+  startModule('/fat_arm', fd, {
+    logEl:      document.getElementById(logId),
+    btnEl,
+    statusEl:   document.getElementById(statusId),
+    downloadEl: null,
+    btnText,
+  });
+}
+
+document.getElementById('btn-gerar').addEventListener('click', function () {
+  const fm = document.getElementById('arquivo_mov').files[0];
+  const fv = document.getElementById('arquivo_volumes').files[0];
+  if (!fm || !fv) { alert('Selecione os arquivos de movimentação e volumes.'); return; }
+
+  const fd = new FormData();
+  fd.append('action',          'gerar');
+  fd.append('arquivo_mov',     fm);
+  fd.append('arquivo_volumes', fv);
+  fd.append('mes_ref',         document.getElementById('mes_ref').value);
+
+  startModule('/fat_arm', fd, {
+    logEl:      document.getElementById('log-output'),
+    btnEl:      this,
+    statusEl:   document.getElementById('status'),
+    downloadEl: document.getElementById('btn-download'),
+    btnText:    '🏭 Gerar Faturamento',
+  });
+});
+</script>
+{% endblock %}

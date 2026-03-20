@@ -1,0 +1,162 @@
+{% extends 'base.html' %}
+{% set active = 'estoque' %}
+{% block content %}
+
+<div class="page-header">
+  <div class="page-icon">📋</div>
+  <div>
+    <h1>Estoque</h1>
+    <p class="subtitle">Volume ocupado · Produtos ociosos por cliente</p>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- DB Status panel -->
+<div class="db-panel">
+  <div class="db-panel-title">🗄️ Banco de Dados Interno de Estoque</div>
+  <div class="db-status {{ 'ok' if db_total > 0 else 'warn' }}" id="db-status-text">
+    {% if db_total > 0 %}
+      ✅ {{ db_total }} SKUs cadastrados · {{ db_clientes|length }} clientes · Atualizado: {{ db_ultima }}
+    {% else %}
+      ⚠️ DB vazio — faça a Carga Inicial antes de gerar o relatório
+    {% endif %}
+  </div>
+  <div class="db-btns">
+    <div>
+      <label class="field-label" style="margin-bottom:4px">Carga Inicial (arquivo de estoque)</label>
+      <input type="file" id="file-carga" accept=".xlsx,.xls" style="display:none">
+      <div style="display:flex; gap:6px">
+        <button class="btn btn-sm" style="background:#1e3a5f; color:white"
+                onclick="document.getElementById('file-carga').click()">
+          📁 Selecionar
+        </button>
+        <button class="btn btn-sm" style="background:#1e3a5f; color:white"
+                onclick="runDbJob('/estoque/carga_inicial','file-carga','log-db','status-db',this,'📥 Carga Inicial')">
+          📥 Carga Inicial
+        </button>
+      </div>
+      <div id="file-carga-name" style="font-size:11px; color:var(--accent3); margin-top:3px"></div>
+    </div>
+
+    <div style="margin-left:16px">
+      <label class="field-label" style="margin-bottom:4px">Atualizar com Movimentação</label>
+      <input type="file" id="file-mov" accept=".xlsx,.xls" style="display:none">
+      <div style="display:flex; gap:6px">
+        <button class="btn btn-sm" style="background:#1e4d3a; color:white"
+                onclick="document.getElementById('file-mov').click()">
+          📁 Selecionar
+        </button>
+        <button class="btn btn-sm" style="background:#1e4d3a; color:white"
+                onclick="runDbJob('/estoque/atualizar_mov','file-mov','log-db','status-db',this,'🔄 Atualizar')">
+          🔄 Atualizar
+        </button>
+      </div>
+      <div id="file-mov-name" style="font-size:11px; color:var(--accent3); margin-top:3px"></div>
+    </div>
+  </div>
+
+  <div class="log-container" style="margin-top:10px">
+    <pre id="log-db" class="log" style="min-height:60px; max-height:140px"></pre>
+  </div>
+  <div id="status-db" class="status" style="margin-top:6px"></div>
+</div>
+
+<!-- Pico de Estoque upload -->
+<div class="card">
+  <label class="field-label">Arquivo de Pico de Estoque por Cliente</label>
+  <p class="hint">Extrair do sistema o pico de estoque por depositante (cada depositante em uma aba Excel).</p>
+  <div class="upload-area" id="drop-vol">
+    <span class="upload-icon">📁</span>
+    <span class="upload-text">Clique para selecionar ou arraste o arquivo aqui</span>
+    <span class="upload-filename" id="file-vol-name">Nenhum arquivo selecionado</span>
+  </div>
+  <input type="file" id="arquivo_volumes" accept=".xlsx,.xls" style="display:none">
+</div>
+
+<!-- Dias ocioso + Mês -->
+<div class="card">
+  <div style="display:flex; gap:32px; flex-wrap:wrap; align-items:flex-end">
+    <div>
+      <label class="field-label" for="dias_ocioso">Considerar ocioso após</label>
+      <div style="display:flex; align-items:center; gap:8px">
+        <select id="dias_ocioso">
+          {% for d in dias_opts %}
+          <option value="{{ d }}" {% if d == dias_atual %}selected{% endif %}>{{ d }} dias</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    <div>
+      <label class="field-label" for="mes_ref">Mês de referência</label>
+      <select id="mes_ref">
+        {% for val, label in meses %}
+        <option value="{{ val }}" {% if loop.first %}selected{% endif %}>{{ label }} ({{ val }})</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+</div>
+
+<div class="action-row">
+  <button id="btn-gerar" class="btn" style="background:#f59e0b; color:white">
+    📋&nbsp; Gerar Relatório de Estoque
+  </button>
+  <span id="status" class="status"></span>
+  <a id="btn-download" class="btn-download btn" style="display:none"></a>
+</div>
+
+<div class="log-container">
+  <pre id="log-output" class="log">Aguardando...</pre>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// File pickers for DB panel
+document.getElementById('file-carga').addEventListener('change', function() {
+  document.getElementById('file-carga-name').textContent = this.files[0]?.name || '';
+});
+document.getElementById('file-mov').addEventListener('change', function() {
+  document.getElementById('file-mov-name').textContent = this.files[0]?.name || '';
+});
+
+// Volume file drop zone
+setupDropZone('drop-vol', 'arquivo_volumes', 'file-vol-name');
+
+function runDbJob(endpoint, fileInputId, logId, statusId, btnEl, btnText) {
+  const file = document.getElementById(fileInputId)?.files[0];
+  if (!file) { alert('Selecione um arquivo primeiro.'); return; }
+
+  const fd = new FormData();
+  fd.append('arquivo', file);
+
+  startModule(endpoint, fd, {
+    logEl:      document.getElementById(logId),
+    btnEl,
+    statusEl:   document.getElementById(statusId),
+    downloadEl: null,
+    btnText,
+  });
+}
+
+document.getElementById('btn-gerar').addEventListener('click', function () {
+  const file = document.getElementById('arquivo_volumes').files[0];
+  if (!file) { alert('Selecione o arquivo de pico de estoque.'); return; }
+
+  const fd = new FormData();
+  fd.append('arquivo_volumes', file);
+  fd.append('mes_ref',    document.getElementById('mes_ref').value);
+  fd.append('dias_ocioso', document.getElementById('dias_ocioso').value);
+
+  startModule('/estoque/gerar', fd, {
+    logEl:      document.getElementById('log-output'),
+    btnEl:      this,
+    statusEl:   document.getElementById('status'),
+    downloadEl: document.getElementById('btn-download'),
+    btnText:    '📋 Gerar Relatório de Estoque',
+  });
+});
+</script>
+{% endblock %}

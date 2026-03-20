@@ -1,0 +1,11 @@
+services:
+  central-relatorios:
+    build: .
+    ports:
+      - "5001:5000"
+    volumes:
+      - ./data:/data
+    environment:
+      - DATA_DIR=/data
+      - SECRET_KEY=${SECRET_KEY}
+    restart: unless-stopped

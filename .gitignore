@@ -29,6 +29,9 @@ eggs/
 *.xls
 *.pdf
 
+# Secrets
+.env
+
 # OS
 .DS_Store
 Thumbs.db

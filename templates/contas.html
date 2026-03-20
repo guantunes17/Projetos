@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+{% set active = 'contas' %}
+{% block content %}
+
+<div class="page-header">
+  <div class="page-icon">📊</div>
+  <div>
+    <h1>Contas a Pagar / Receber</h1>
+    <p class="subtitle">Fluxo de caixa · Análise por categoria e vencimento</p>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- Arquivo Pagar -->
+<div class="card">
+  <label class="field-label">Arquivo de Contas a Pagar</label>
+  <div class="upload-area" id="drop-pagar">
+    <span class="upload-icon">📁</span>
+    <span class="upload-text">Clique para selecionar ou arraste o arquivo aqui</span>
+    <span class="upload-filename" id="file-pagar-name">Nenhum arquivo selecionado</span>
+  </div>
+  <input type="file" id="arquivo_pagar" accept=".xlsx,.xls" style="display:none">
+</div>
+
+<!-- Arquivo Receber -->
+<div class="card">
+  <label class="field-label">Arquivo de Contas a Receber</label>
+  <div class="upload-area" id="drop-receber">
+    <span class="upload-icon">📁</span>
+    <span class="upload-text">Clique para selecionar ou arraste o arquivo aqui</span>
+    <span class="upload-filename" id="file-receber-name">Nenhum arquivo selecionado</span>
+  </div>
+  <input type="file" id="arquivo_receber" accept=".xlsx,.xls" style="display:none">
+</div>
+
+<!-- Mês -->
+<div class="card">
+  <label class="field-label" for="mes_ref">Mês de referência</label>
+  <select id="mes_ref">
+    {% for val, label in meses %}
+    <option value="{{ val }}" {% if loop.first %}selected{% endif %}>{{ label }} ({{ val }})</option>
+    {% endfor %}
+  </select>
+</div>
+
+<div class="action-row">
+  <button id="btn-gerar" class="btn" style="background:#10b981; color:white">
+    📊&nbsp; Gerar Relatório Financeiro
+  </button>
+  <span id="status" class="status"></span>
+  <a id="btn-download" class="btn-download btn" style="display:none"></a>
+</div>
+
+<div class="log-container">
+  <pre id="log-output" class="log">Aguardando...</pre>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+setupDropZone('drop-pagar',   'arquivo_pagar',   'file-pagar-name');
+setupDropZone('drop-receber', 'arquivo_receber', 'file-receber-name');
+
+document.getElementById('btn-gerar').addEventListener('click', function () {
+  const fp = document.getElementById('arquivo_pagar').files[0];
+  const fr = document.getElementById('arquivo_receber').files[0];
+  if (!fp && !fr) { alert('Selecione ao menos um arquivo.'); return; }
+
+  const fd = new FormData();
+  if (fp) fd.append('arquivo_pagar',   fp);
+  if (fr) fd.append('arquivo_receber', fr);
+  fd.append('mes_ref', document.getElementById('mes_ref').value);
+
+  startModule('/contas', fd, {
+    logEl:      document.getElementById('log-output'),
+    btnEl:      this,
+    statusEl:   document.getElementById('status'),
+    downloadEl: document.getElementById('btn-download'),
+    btnText:    '📊 Gerar Relatório Financeiro',
+  });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+{% set active = 'home' %}
+{% block content %}
+
+<div class="page-header">
+  <div class="page-icon">🏠</div>
+  <div>
+    <h1>Painel Principal</h1>
+    <p class="subtitle">{{ data_pt }}</p>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<div class="card-grid">
+  {% for c in cards %}
+  <div class="home-card" style="border-top: 4px solid {{ c.cor }}">
+    {% if c.atrasado %}
+    <div class="badge-atrasado">⚠ EXTRAÇÃO ATRASADA</div>
+    {% endif %}
+    <div class="card-body">
+      <div class="card-icon">{{ c.icone }}</div>
+      <div class="card-title">{{ c.nome }}</div>
+      <div class="card-divider"></div>
+      <div class="card-row">
+        <div class="card-label">Última extração</div>
+        <div class="card-value" style="color: {{ '#e2e8f0' }}">{{ c.ultima }}</div>
+      </div>
+      <div class="card-row" style="margin-top: 8px">
+        <div class="card-label">Próxima extração</div>
+        <div class="card-value" style="color: {{ '#ef4444' if c.atrasado else ('#f59e0b' if c.ultima == '—' else '#10b981') }}">
+          {{ c.proxima }}
+        </div>
+      </div>
+    </div>
+    <div class="card-footer">
+      <button class="btn btn-sm" onclick="abrirAgendamento('{{ c.nome }}', {{ c.dia_mod }})"
+              style="background: {{ c.cor }}; color: white; width: 100%">
+        📅 Agendar Extração
+      </button>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="info-bar">
+  💡 Use a barra lateral para acessar cada módulo e gerar relatórios.
+  Os arquivos gerados ficam disponíveis em <strong>Arquivos</strong>.
+</div>
+
+<!-- Modal de agendamento -->
+<div id="modal-bg" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:100; align-items:center; justify-content:center">
+  <div style="background:var(--card); border:1px solid var(--borda); border-radius:10px; width:320px; overflow:hidden">
+    <div id="modal-accent" style="height:4px"></div>
+    <div style="padding:20px">
+      <h3 id="modal-titulo" style="font-size:14px; margin-bottom:16px; color:var(--texto)"></h3>
+      <label class="field-label">Dia do mês (1–28)</label>
+      <input type="number" id="modal-dia" min="1" max="28" value="6"
+             style="width:80px; margin-bottom:16px">
+      <p style="font-size:11px; color:var(--sub); margin-bottom:16px">
+        Dias entre 1 e 28 garantem ocorrência em todos os meses.
+      </p>
+      <div style="display:flex; gap:10px">
+        <button id="modal-confirmar" class="btn btn-success" style="flex:1">✔ Confirmar</button>
+        <button class="btn btn-muted" onclick="fecharModal()" style="flex:1">✕ Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+let modalNome = '';
+
+function abrirAgendamento(nome, diaAtual) {
+  modalNome = nome;
+  document.getElementById('modal-titulo').textContent = '📅 Agendar — ' + nome;
+  document.getElementById('modal-dia').value = diaAtual;
+  document.getElementById('modal-bg').style.display = 'flex';
+}
+
+function fecharModal() {
+  document.getElementById('modal-bg').style.display = 'none';
+}
+
+document.getElementById('modal-confirmar').addEventListener('click', function() {
+  const dia = parseInt(document.getElementById('modal-dia').value);
+  if (isNaN(dia) || dia < 1 || dia > 28) {
+    alert('Informe um dia entre 1 e 28.');
+    return;
+  }
+  const fd = new FormData();
+  fd.append('nome', modalNome);
+  fd.append('dia', dia);
+  fetch('/agendar', { method: 'POST', body: fd })
+    .then(() => location.reload());
+});
+
+document.getElementById('modal-bg').addEventListener('click', function(e) {
+  if (e.target === this) fecharModal();
+});
+</script>
+{% endblock %}

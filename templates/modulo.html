@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% set active = action.lstrip('/') %}
+{% block content %}
+
+<div class="page-header">
+  <div class="page-icon">{{ icone }}</div>
+  <div>
+    <h1>{{ titulo }}</h1>
+    <p class="subtitle">{{ subtitulo }}</p>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- Upload -->
+<div class="card">
+  <label class="field-label">Arquivo de entrada</label>
+  <div class="upload-area" id="drop-zone">
+    <span class="upload-icon">📁</span>
+    <span class="upload-text">Clique para selecionar ou arraste o arquivo aqui</span>
+    <span class="upload-filename" id="file-name">Nenhum arquivo selecionado</span>
+  </div>
+  <input type="file" id="arquivo" accept=".xlsx,.xls,.pdf" style="display:none">
+</div>
+
+<!-- Mês -->
+<div class="card">
+  <label class="field-label" for="mes_ref">Mês de referência</label>
+  <select id="mes_ref">
+    {% for val, label in meses %}
+    <option value="{{ val }}" {% if loop.first %}selected{% endif %}>{{ label }} ({{ val }})</option>
+    {% endfor %}
+  </select>
+</div>
+
+{% if hint %}
+<p class="hint">ℹ&nbsp; {{ hint }}</p>
+{% endif %}
+
+<!-- Ação -->
+<div class="action-row">
+  <button id="btn-gerar" class="btn" style="background:{{ cor }}; color:white">
+    {{ icone }}&nbsp; Gerar Relatório
+  </button>
+  <span id="status" class="status"></span>
+  <a id="btn-download" class="btn-download btn" style="display:none"></a>
+</div>
+
+<!-- Log -->
+<div class="log-container">
+  <pre id="log-output" class="log">Aguardando...</pre>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+initModulo('{{ action }}', '{{ icone }} Gerar Relatório');
+</script>
+{% endblock %}

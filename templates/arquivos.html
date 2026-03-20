@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+{% set active = 'arquivos' %}
+{% block content %}
+
+<div class="page-header">
+  <div class="page-icon">📁</div>
+  <div>
+    <h1>Arquivos Gerados</h1>
+    <p class="subtitle">Todos os relatórios exportados, agrupados por módulo</p>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+{% set total_geral = namespace(n=0) %}
+{% for grupo in grupos %}
+  {% set total_geral.n = total_geral.n + grupo.arquivos|length %}
+{% endfor %}
+
+{% if total_geral.n == 0 %}
+<div class="card" style="text-align:center; padding:32px; color:var(--sub)">
+  <div style="font-size:40px; margin-bottom:12px">📭</div>
+  <div>Nenhum arquivo gerado ainda.</div>
+  <div style="font-size:12px; margin-top:6px">Gere relatórios pelos módulos da barra lateral.</div>
+</div>
+{% endif %}
+
+{% for grupo in grupos %}
+{% if grupo.arquivos %}
+<div class="card" style="margin-bottom:16px">
+  <div class="section-title" style="margin-bottom:12px">{{ grupo.nome }}</div>
+  <table style="width:100%; border-collapse:collapse; font-size:13px">
+    <thead>
+      <tr style="background:var(--card2); text-align:left">
+        <th style="padding:7px 12px; border-bottom:1px solid var(--borda)">Arquivo</th>
+        <th style="padding:7px 12px; border-bottom:1px solid var(--borda); width:110px">Data</th>
+        <th style="padding:7px 12px; border-bottom:1px solid var(--borda); width:80px; text-align:right">Tamanho</th>
+        <th style="padding:7px 12px; border-bottom:1px solid var(--borda); width:90px; text-align:center">Ação</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for f in grupo.arquivos %}
+      <tr style="border-bottom:1px solid var(--borda)">
+        <td style="padding:7px 12px; color:var(--texto)">{{ f.nome }}</td>
+        <td style="padding:7px 12px; color:var(--sub)">{{ f.data }}</td>
+        <td style="padding:7px 12px; color:var(--sub); text-align:right">{{ f.size }} KB</td>
+        <td style="padding:7px 12px; text-align:center">
+          <a href="/download/{{ f.rel }}" class="btn btn-sm"
+             style="background:#4f8ef7; color:white; text-decoration:none; padding:4px 12px">
+            ⬇ Baixar
+          </a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endfor %}
+
+{% endblock %}

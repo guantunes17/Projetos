@@ -1,0 +1,170 @@
+{% extends 'base.html' %}
+{% set active = 'de_para' %}
+{% block content %}
+
+<div class="page-header">
+  <div class="page-icon">🔗</div>
+  <div>
+    <h1>De-Para de SKU</h1>
+    <p class="subtitle">Mapeamento de código SKU → Cliente depositante</p>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- Ações superiores -->
+<div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px; align-items:center">
+  <button class="btn btn-sm" style="background:#4f8ef7; color:white" onclick="addRow()">
+    ＋ Adicionar linha
+  </button>
+  <button class="btn btn-sm" style="background:#10b981; color:white" id="btn-salvar" onclick="salvar()">
+    💾 Salvar
+  </button>
+  <span style="flex:1"></span>
+  <!-- Importar Excel -->
+  <input type="file" id="file-import" accept=".xlsx,.xls" style="display:none">
+  <button class="btn btn-sm" style="background:#6b7280; color:white"
+          onclick="document.getElementById('file-import').click()">
+    📥 Importar Excel
+  </button>
+  <span id="status-import" class="status"></span>
+</div>
+
+<!-- Busca -->
+<div style="margin-bottom:12px">
+  <input type="text" id="busca" placeholder="Filtrar por código ou cliente…"
+         style="width:100%; max-width:400px"
+         oninput="filtrar()">
+</div>
+
+<!-- Tabela -->
+<div style="overflow-x:auto">
+  <table id="tabela-depara" style="width:100%; border-collapse:collapse; font-size:13px">
+    <thead>
+      <tr style="background:var(--card2); text-align:left">
+        <th style="padding:8px 12px; border-bottom:1px solid var(--borda); width:200px">Código SKU</th>
+        <th style="padding:8px 12px; border-bottom:1px solid var(--borda)">Cliente / Depositante</th>
+        <th style="padding:8px 12px; border-bottom:1px solid var(--borda); width:60px"></th>
+      </tr>
+    </thead>
+    <tbody id="tbody">
+      {% for cod, cli in items %}
+      <tr data-cod="{{ cod }}" data-cli="{{ cli }}">
+        <td style="padding:6px 8px"><input class="inp-cod" type="text" value="{{ cod }}" style="width:100%"></td>
+        <td style="padding:6px 8px"><input class="inp-cli" type="text" value="{{ cli }}" style="width:100%"></td>
+        <td style="padding:6px 8px; text-align:center">
+          <button class="btn btn-sm" style="background:#dc2626; color:white; padding:2px 8px"
+                  onclick="removeRow(this)">✕</button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div style="margin-top:8px; font-size:12px; color:var(--sub)" id="total-label">
+  {{ items|length }} registros
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function addRow(cod='', cli='') {
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td style="padding:6px 8px"><input class="inp-cod" type="text" value="${cod}" style="width:100%"></td>
+    <td style="padding:6px 8px"><input class="inp-cli" type="text" value="${cli}" style="width:100%"></td>
+    <td style="padding:6px 8px; text-align:center">
+      <button class="btn btn-sm" style="background:#dc2626; color:white; padding:2px 8px"
+              onclick="removeRow(this)">✕</button>
+    </td>`;
+  document.getElementById('tbody').appendChild(tr);
+  tr.querySelector('.inp-cod').focus();
+  updateTotal();
+}
+
+function removeRow(btn) {
+  btn.closest('tr').remove();
+  updateTotal();
+}
+
+function getItems() {
+  const rows = document.querySelectorAll('#tbody tr');
+  const items = [];
+  rows.forEach(r => {
+    const cod = r.querySelector('.inp-cod').value.trim();
+    const cli = r.querySelector('.inp-cli').value.trim();
+    if (cod) items.push({ codigo: cod, cliente: cli });
+  });
+  return items;
+}
+
+function updateTotal() {
+  const n = document.querySelectorAll('#tbody tr').length;
+  document.getElementById('total-label').textContent = n + ' registros';
+}
+
+function filtrar() {
+  const q = document.getElementById('busca').value.toLowerCase();
+  document.querySelectorAll('#tbody tr').forEach(tr => {
+    const cod = tr.querySelector('.inp-cod').value.toLowerCase();
+    const cli = tr.querySelector('.inp-cli').value.toLowerCase();
+    tr.style.display = (cod.includes(q) || cli.includes(q)) ? '' : 'none';
+  });
+}
+
+function salvar() {
+  const btn = document.getElementById('btn-salvar');
+  btn.disabled = true;
+  btn.textContent = '⏳ Salvando…';
+  fetch('/de_para/salvar', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ items: getItems() }),
+  })
+  .then(r => r.json())
+  .then(d => {
+    btn.disabled = false;
+    btn.textContent = '💾 Salvar';
+    if (d.ok) {
+      document.getElementById('total-label').textContent = d.total + ' registros salvos ✅';
+    } else {
+      alert('Erro ao salvar: ' + (d.error || 'desconhecido'));
+    }
+  })
+  .catch(() => {
+    btn.disabled = false;
+    btn.textContent = '💾 Salvar';
+    alert('Erro de comunicação com o servidor.');
+  });
+}
+
+document.getElementById('file-import').addEventListener('change', function () {
+  const file = this.files[0];
+  if (!file) return;
+  const fd = new FormData();
+  fd.append('arquivo', file);
+  const st = document.getElementById('status-import');
+  st.textContent = '⏳ Importando…';
+  st.className = 'status running';
+  fetch('/de_para/importar', { method: 'POST', body: fd })
+  .then(r => r.json())
+  .then(d => {
+    if (d.ok) {
+      st.textContent = `✅ ${d.total} registros — recarregando…`;
+      st.className = 'status done';
+      setTimeout(() => location.reload(), 1200);
+    } else {
+      st.textContent = '❌ ' + (d.error || 'Erro');
+      st.className = 'status error';
+    }
+  })
+  .catch(() => {
+    st.textContent = '❌ Erro de comunicação';
+    st.className = 'status error';
+  });
+  this.value = '';
+});
+</script>
+{% endblock %}
