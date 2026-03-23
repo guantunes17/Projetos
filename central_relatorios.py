@@ -343,7 +343,7 @@ def processar_fretes(caminho, log, _saida_override=None):
         # Calcula peso x volume = Peso Taxado ÷ Volume
         if 'Peso Taxado' in df_emb_raw.columns and 'Volume' in df_emb_raw.columns:
             df_emb_raw['peso x volume'] = df_emb_raw.apply(
-                lambda r: r['Peso Taxado'] / r['Volume'] if r['Volume'] else 0,
+                lambda r: r['Peso Taxado'] / r['Volume'] if r['Volume'] and r['Volume'] != 0 else 0,
                 axis=1
             )
             log("✅ Coluna 'peso x volume' calculada automaticamente (Peso Taxado ÷ Volume).\n")
@@ -668,14 +668,12 @@ def _notificar_windows(titulo, mensagem, icone_path=None):
         pass
     # Fallback: PowerShell notification
     try:
-        _titulo_safe   = titulo.replace("'", "")
-        _mensagem_safe = mensagem.replace("'", "")
         ps_script = f"""
 Add-Type -AssemblyName System.Windows.Forms
 $notify = New-Object System.Windows.Forms.NotifyIcon
 $notify.Icon = [System.Drawing.SystemIcons]::Information
 $notify.Visible = $true
-$notify.ShowBalloonTip(6000, '{_titulo_safe}', '{_mensagem_safe}', [System.Windows.Forms.ToolTipIcon]::Info)
+$notify.ShowBalloonTip(6000, '{titulo}', '{mensagem}', [System.Windows.Forms.ToolTipIcon]::Info)
 Start-Sleep -Seconds 7
 $notify.Dispose()
 """
@@ -2147,9 +2145,8 @@ def _prod_parse_ini(d_col, h_col):
     try:
         d  = str(d_col).split()[0]
         dt = pd.to_datetime(d + ' ' + str(h_col), errors='coerce')
-        _ano_max = datetime.now().year + 1
-        if pd.isna(dt) or not (2020 <= dt.year <= _ano_max): return pd.NaT
-        if dt.hour < 5 or dt.hour > 22:                      return pd.NaT
+        if pd.isna(dt) or not (2020 <= dt.year <= 2025): return pd.NaT
+        if dt.hour < 5 or dt.hour > 22:                  return pd.NaT
         return dt
     except (ValueError, TypeError):
         return pd.NaT
@@ -2158,8 +2155,7 @@ def _prod_parse_fim(d_col, h_col, ini):
     try:
         d  = str(d_col).split()[0]
         dt = pd.to_datetime(d + ' ' + str(h_col), errors='coerce')
-        _ano_max = datetime.now().year + 1
-        if pd.isna(dt) or not (2020 <= dt.year <= _ano_max): return pd.NaT
+        if pd.isna(dt) or not (2020 <= dt.year <= 2025): return pd.NaT
         if pd.notna(ini) and (dt - ini) > timedelta(hours=9): return pd.NaT
         return dt
     except (ValueError, TypeError):
@@ -2248,7 +2244,7 @@ def _prod_formatar_resumo(ws):
                 cell.alignment = Alignment(horizontal='center', vertical='center')
             elif pct_col and ci == pct_col:
                 try:   _prod_fmt_pct(cell, float(cell.value))
-                except Exception: pass
+                except: pass
             else:
                 cell.fill      = PatternFill(fill_type='solid', fgColor=bg)
                 cell.font      = Font(name='Calibri', size=10)
@@ -2643,14 +2639,7 @@ def _dash_coletar_dados(mes_ano_str, overrides, log):
 
 def _dash_exportar_excel(dados, mes_ano_str, pasta_saida, log):
     """Gera o Excel do Dashboard consolidado."""
-    try:
-        partes = mes_ano_str.split('-')
-        if len(partes) != 2:
-            raise ValueError(f"Formato inválido: '{mes_ano_str}'. Esperado MM-AAAA.")
-        mm, aaaa = partes
-    except ValueError as e:
-        log(f"❌ Erro no formato do mês/ano: {e}\n")
-        return None
+    mm, aaaa = mes_ano_str.split('-')
     nome_arq  = f'dashboard_{mm}-{aaaa}.xlsx'
     subpasta  = os.path.join(pasta_saida, aaaa)
     try:
@@ -2827,14 +2816,7 @@ def _consolidar_historico(dados, mes_ano_str, log):
     Cada mês ocupa uma aba (ex: Jan-2026). Se já existir, substitui.
     Estrutura da aba: Resumo Geral + tabelas detalhadas de cada módulo.
     """
-    try:
-        partes = mes_ano_str.split('-')
-        if len(partes) != 2:
-            raise ValueError(f"Formato inválido: '{mes_ano_str}'. Esperado MM-AAAA.")
-        mm, aaaa = partes
-    except ValueError as e:
-        log(f"❌ Erro no formato do mês/ano ao consolidar histórico: {e}\n")
-        return
+    mm, aaaa = mes_ano_str.split('-')
     _MESES_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
                  'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
     nome_aba  = f'{_MESES_PT[int(mm)-1][:3]}-{aaaa}'   # ex: Mar-2026
@@ -5251,7 +5233,7 @@ def _fat_dist_titulo_pagina(ws, titulo, n_colunas):
     ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=n_colunas)
     c = ws.cell(row=row, column=1)
     c.font      = Font(name='Arial', bold=True, size=12, color='FFFFFF')
-    c.fill      = PatternFill('solid', start_color='1A202C')
+    c.fill      = PatternFill('solid', start_color='0F172A')
     c.alignment = Alignment(horizontal='center', vertical='center')
     ws.row_dimensions[row].height = 22
     ws.cell(row=2, column=1, value=None)  # linha em branco
@@ -5330,20 +5312,20 @@ def _fat_dist_cabecalho_doc(ws, row, cliente, cc=None, n_colunas=5):
     """
     from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
-    COR_TITULO = 'F97316'   # laranja claro
-    COR_INFO   = 'FFF7ED'   # fundo quase branco
+    COR_TITULO = '3B82F6'   # laranja claro
+    COR_INFO   = 'EFF6FF'   # fundo quase branco
     borda_ext  = Border(
-        top=Side(style='medium', color='EA580C'),
-        bottom=Side(style='thin', color='EA580C'),
-        left=Side(style='medium', color='EA580C'),
-        right=Side(style='medium', color='EA580C'),
+        top=Side(style='medium', color='1E40AF'),
+        bottom=Side(style='thin', color='1E40AF'),
+        left=Side(style='medium', color='1E40AF'),
+        right=Side(style='medium', color='1E40AF'),
     )
     borda_mid  = Border(
-        left=Side(style='medium', color='EA580C'),
-        right=Side(style='medium', color='EA580C'),
+        left=Side(style='medium', color='1E40AF'),
+        right=Side(style='medium', color='1E40AF'),
     )
 
-    def _merge_row(r, valor, bold=False, sz=9, cor_txt='1A202C', bg=None, align='left', border=None):
+    def _merge_row(r, valor, bold=False, sz=9, cor_txt='0F172A', bg=None, align='left', border=None):
         ws.cell(r, 1, valor)
         ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=n_colunas)
         c = ws.cell(r, 1)
@@ -5366,24 +5348,24 @@ def _fat_dist_cabecalho_doc(ws, row, cliente, cc=None, n_colunas=5):
     # Linha 2 — cliente [ - CC ]
     label = cliente if not cc else f'{cliente}  —  {cc}'
     _merge_row(row + 1, label,
-               bold=True, sz=9, cor_txt='78350F', bg=COR_INFO,
+               bold=True, sz=9, cor_txt='1E3A5F', bg=COR_INFO,
                border=borda_mid)
     ws.row_dimensions[row + 1].height = 14
 
     # Linha 3 — NF em branco
     _merge_row(row + 2, 'NF:',
-               bold=False, sz=9, cor_txt='374151', bg=COR_INFO,
+               bold=False, sz=9, cor_txt='1E3A5F', bg=COR_INFO,
                border=Border(
-                   bottom=Side(style='medium', color='EA580C'),
-                   left=Side(style='medium', color='EA580C'),
-                   right=Side(style='medium', color='EA580C'),
+                   bottom=Side(style='medium', color='1E40AF'),
+                   left=Side(style='medium', color='1E40AF'),
+                   right=Side(style='medium', color='1E40AF'),
                ))
     ws.row_dimensions[row + 2].height = 14
 
     return row + 3   # retorna próxima linha livre após o cabeçalho
 
 
-def _fat_dist_bloco_iss(ws, row, subtotal, label_sub, n_colunas, col_valor, cor_sub, cor_total='111827'):
+def _fat_dist_bloco_iss(ws, row, subtotal, label_sub, n_colunas, col_valor, cor_sub, cor_total='0F172A'):
     """Renderiza bloco coeso de 3 linhas: SUBTOTAL / ISS 2% / TOTAL A PAGAR."""
     from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
@@ -5514,12 +5496,12 @@ def _fat_dist_aba_fechamento(wb, df, mes_ref):
     grand_total    = round(subtotal_geral + subtotal_eph + pint_total + func_total, 2)
 
     # ── Estilos ────────────────────────────────────────────────────────────────
-    COR_HEADER = '1A202C'
-    COR_GERAL  = 'EA580C'
+    COR_HEADER = '0F172A'
+    COR_GERAL  = '1E40AF'
     COR_EPH    = '1D4ED8'
-    COR_PINT   = '7C3AED'
-    COR_FUNC   = '065F46'
-    COR_GTOTAL = '111827'
+    COR_PINT   = '1D4ED8'
+    COR_FUNC   = '1E3A5F'
+    COR_GTOTAL = '0F172A'
     COR_ALT    = 'F9FAFB'
 
     bd_b = Border(bottom=Side(style='thin',   color='E5E7EB'))
@@ -5564,7 +5546,7 @@ def _fat_dist_aba_fechamento(wb, df, mes_ref):
         """Célula com hyperlink interno para outra aba — sem sublinhado."""
         c = ws.cell(row=row, column=col)
         c.hyperlink = f"#{aba_destino}!A1"
-        c.font  = Font(name='Arial', bold=True, size=9, color='EA580C')
+        c.font  = Font(name='Arial', bold=True, size=9, color='1E40AF')
         c.value = texto
 
     def _sep(row):
@@ -5598,13 +5580,13 @@ def _fat_dist_aba_fechamento(wb, df, mes_ref):
     for col, lbl, al in [(2,'Cliente','left'),(3,'Entregas','center'),
                           (4,'Valor do Frete','right'),(5,'ISS (2%)','right'),
                           (6,'Total a Pagar','right')]:
-        _hdr(r, col, lbl, 'D1D5DB', bold=True, align=al, fg='374151')
+        _hdr(r, col, lbl, 'D1D5DB', bold=True, align=al, fg='1E3A5F')
     r += 1
     # Clientes com aba própria (CC) — aparecem primeiro com indicador
     # cc_rows: (rotulo, qtd, total_frete, iss_val, total_pagar)
     for i, (nome, qtd, total_frete, iss_val, total_pagar) in enumerate(cc_rows):
         bg = COR_ALT if i % 2 == 0 else None
-        _dat(r, 2, nome + '  ›', bold=True, bg=bg, cor_txt='78350F')
+        _dat(r, 2, nome + '  ›', bold=True, bg=bg, cor_txt='1E3A5F')
         _link(r, 2, nome + '  ›', nome)
         _dat(r, 3, qtd,         align='center', num_fmt='#,##0', bg=bg)
         _dat(r, 4, total_frete, align='right', num_fmt='R$ #,##0.00', bg=bg)
@@ -5612,7 +5594,7 @@ def _fat_dist_aba_fechamento(wb, df, mes_ref):
             _dat(r, 5, iss_val,    align='right', num_fmt='R$ #,##0.00',
                  bg=bg, cor_txt='B45309')
             _dat(r, 6, total_pagar, align='right', num_fmt='R$ #,##0.00',
-                 bg=bg, cor_txt='7C3AED')
+                 bg=bg, cor_txt='1D4ED8')
         else:
             _dat(r, 5, '', bg=bg)
             _dat(r, 6, '', bg=bg)
@@ -5642,7 +5624,7 @@ def _fat_dist_aba_fechamento(wb, df, mes_ref):
     r += 1
     for col, lbl, al in [(2,'Divisão','left'),(3,'Entregas','center'),
                           (4,'Valor do Frete','right'),(5,'','left'),(6,'','left')]:
-        _hdr(r, col, lbl, 'D1D5DB', bold=True, align=al, fg='374151')
+        _hdr(r, col, lbl, 'D1D5DB', bold=True, align=al, fg='1E3A5F')
     r += 1
     _EPH_ABA_MAP = {'EPH - Astrazeneca': 'EPH - Astrazeneca', 'EPH - MATRIZ': 'EPH - MATRIZ'}
     for i, (nome, qtd, total) in enumerate(eph_rows):
@@ -5664,14 +5646,14 @@ def _fat_dist_aba_fechamento(wb, df, mes_ref):
     for col, lbl, al in [(2,'Cliente','left'),(3,'Entregas','center'),
                           (4,'Valor do Frete','right'),(5,'ISS (2%)','right'),
                           (6,'Total a Pagar','right')]:
-        _hdr(r, col, lbl, 'D1D5DB', bold=True, align=al, fg='374151')
+        _hdr(r, col, lbl, 'D1D5DB', bold=True, align=al, fg='1E3A5F')
     r += 1
     _dat(r, 2, 'Pint Pharma', bg=COR_ALT)
     _link(r, 2, 'Pint Pharma', 'Pint Pharma')
     _dat(r, 3, _qtd(mask_pint), align='center', num_fmt='#,##0', bg=COR_ALT)
     _dat(r, 4, pint_total, align='right', num_fmt='R$ #,##0.00', bg=COR_ALT)
     _dat(r, 5, pint_iss,   align='right', num_fmt='R$ #,##0.00', bg=COR_ALT, cor_txt='DC2626')
-    _dat(r, 6, pint_pagar, align='right', num_fmt='R$ #,##0.00', bg=COR_ALT, cor_txt='7C3AED')
+    _dat(r, 6, pint_pagar, align='right', num_fmt='R$ #,##0.00', bg=COR_ALT, cor_txt='1D4ED8')
     r += 1
     _subtotal_row(r, 'TOTAL A PAGAR — PINT PHARMA', pint_pagar, COR_PINT, col_val=6)
     r += 1
@@ -5682,7 +5664,7 @@ def _fat_dist_aba_fechamento(wb, df, mes_ref):
     r += 1
     for col, lbl, al in [(2,'Cliente','left'),(3,'Entregas','center'),
                           (4,'Valor do Frete','right'),(5,'','left'),(6,'','left')]:
-        _hdr(r, col, lbl, 'D1D5DB', bold=True, align=al, fg='374151')
+        _hdr(r, col, lbl, 'D1D5DB', bold=True, align=al, fg='1E3A5F')
     r += 1
     _dat(r, 2, 'Funcional Health Tech', bg=COR_ALT)
     _link(r, 2, 'Funcional Health Tech', 'Funcional')
@@ -5720,15 +5702,15 @@ def _fat_dist_aba_fechamento(wb, df, mes_ref):
 def _fat_dist_aba_geral(wb, df, mes_ref):
     """Aba Geral — clientes simples sem breakdown de CC.
     CELLTRION e BHC - Xofigo incluem bloco ISS 2%."""
-    COR_BLK = 'EA580C'
-    COR_CAB = '4A5568'
+    COR_BLK = '1E40AF'
+    COR_CAB = '1D4ED8'
     # Clientes desta aba que têm ISS
     _ISS_GERAL = {'CELLTRION', 'BHC - Xofigo'}
 
     ws = wb.create_sheet('Geral')
     ws.sheet_view.showGridLines = False
 
-    COLUNAS   = ['Coleta', 'Número Referência', 'Destinatário',
+    COLUNAS   = ['Data', 'Registro', 'Destinatário',
                  'Cidade Destinatário', 'Valor do Frete']
     N_COLS    = len(COLUNAS)
     COL_FRETE = 5
@@ -5788,14 +5770,20 @@ def _fat_dist_aba_cliente_cc(wb, df, mes_ref, rotulo, substrings, cc_com_iss=Non
                 True  → ISS em todos os CCs
                 set   → ISS apenas nos CCs cujo nome está no set
     """
-    COR_CLI = 'EA580C'
-    COR_CC  = '78350F'
-    COR_CAB = '4A5568'
+    COR_CLI = '1E40AF'
+    COR_CC  = '1E3A5F'
+    COR_CAB = '1D4ED8'
 
-    COLUNAS   = ['Coleta', 'Número Referência', 'Destinatário',
-                 'Cidade Destinatário', 'Valor do Frete']
-    N_COLS    = len(COLUNAS)
-    COL_FRETE = 5
+    # ADITUS tem coluna extra 'CC' para preenchimento manual
+    if rotulo == 'ADITUS':
+        COLUNAS   = ['Data', 'Registro', 'Destinatário',
+                     'Cidade Destinatário', 'CC', 'Valor do Frete']
+        COL_FRETE = 6
+    else:
+        COLUNAS   = ['Data', 'Registro', 'Destinatário',
+                     'Cidade Destinatário', 'Valor do Frete']
+        COL_FRETE = 5
+    N_COLS = len(COLUNAS)
 
     def _cc_tem_iss(cc_nome):
         if cc_com_iss is None:   return False
@@ -5856,13 +5844,16 @@ def _fat_dist_aba_cliente_cc(wb, df, mes_ref, rotulo, substrings, cc_com_iss=Non
         total_cc = 0.0
         for _, r in bloco.iterrows():
             frete = _fat_dist_fmt_num(r.get('Valor Frete'))
+            valores = [_fat_dist_fmt_data(r.get('Coleta')),
+                       _fat_dist_str(r.get('Número Referência')),
+                       _fat_dist_str(r.get('Destinatário')),
+                       _fat_dist_str(r.get('Cidade Destinatário'))]
+            if rotulo == 'ADITUS':
+                valores.append('')   # coluna CC — preenchimento manual
+            valores.append(frete)
             _fat_dist_linha_dados(
                 ws, cur_row,
-                [_fat_dist_fmt_data(r.get('Coleta')),
-                 _fat_dist_str(r.get('Número Referência')),
-                 _fat_dist_str(r.get('Destinatário')),
-                 _fat_dist_str(r.get('Cidade Destinatário')),
-                 frete],
+                valores,
                 fmt_moeda_cols={COL_FRETE},
             )
             cur_row  += 1
@@ -5888,7 +5879,7 @@ def _fat_dist_aba_cliente_cc(wb, df, mes_ref, rotulo, substrings, cc_com_iss=Non
         iss_total = round(total_pagar_geral - total_frete_geral, 2)
         _fat_dist_linha_total(ws, cur_row,
                               f'TOTAL FRETE — {rotulo}',
-                              total_frete_geral, N_COLS, COL_FRETE, '374151')
+                              total_frete_geral, N_COLS, COL_FRETE, '1E3A5F')
         cur_row += 1
         from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
         ws.cell(cur_row, 1, 'ISS TOTAL  2%')
@@ -5923,7 +5914,7 @@ def _fat_dist_aba_eph_astrazeneca(wb, df, mes_ref):
     ws  = wb.create_sheet('EPH - Astrazeneca')
     ws.sheet_view.showGridLines = False
 
-    COLUNAS   = ['Coleta', 'Número Referência', 'Destinatário',
+    COLUNAS   = ['Data', 'Registro', 'Destinatário',
                  'Cidade Destinatário', 'Valor do Frete', 'Obs. Minuta']
     N_COLS    = len(COLUNAS)
     COL_FRETE = 5
@@ -5967,7 +5958,7 @@ def _fat_dist_aba_eph_matriz(wb, df, mes_ref):
     ws  = wb.create_sheet('EPH - MATRIZ')
     ws.sheet_view.showGridLines = False
 
-    COLUNAS = ['Coleta', 'Centro de Custo', 'Nota Fiscal', 'Valor N.F.',
+    COLUNAS = ['Data', 'Centro de Custo', 'Nota Fiscal', 'Valor N.F.',
                'Volume', 'Valor Frete', 'Frete Peso', 'Seguro',
                'Manuseio', 'Despacho', 'Valor ICMS', 'Embalagem']
     N_COLS    = len(COLUNAS)
@@ -6018,19 +6009,19 @@ def _fat_dist_aba_eph_matriz(wb, df, mes_ref):
         cur_row += 2
 
     total_geral = sum(totais_cc.values())
-    _fat_dist_linha_total(ws, cur_row, 'TOTAL GERAL', total_geral, N_COLS, COL_FRETE, '1A202C')
+    _fat_dist_linha_total(ws, cur_row, 'TOTAL GERAL', total_geral, N_COLS, COL_FRETE, '0F172A')
     _fat_dist_ajusta_larguras(ws, [14, 30, 16, 12, 8, 12, 12, 10, 10, 10, 12, 12])
 
 
 # ── Aba 4 — Pint Pharma ───────────────────────────────────────────────────────
 
 def _fat_dist_aba_pint_pharma(wb, df, mes_ref):
-    COR = '7C3AED'
+    COR = '1D4ED8'
 
     ws = wb.create_sheet('Pint Pharma')
     ws.sheet_view.showGridLines = False
 
-    COLUNAS   = ['Pedido Cliente', 'Coleta', 'Número Referência', 'Destinatário',
+    COLUNAS   = ['Pedido Cliente', 'Data', 'Registro', 'Destinatário',
                  'Cidade', 'UF', 'Valor do Frete', 'Obs. Minuta']
     N_COLS    = len(COLUNAS)
     COL_FRETE = 7
@@ -6070,11 +6061,11 @@ def _fat_dist_aba_pint_pharma(wb, df, mes_ref):
 # ── Aba 5 — Funcional ─────────────────────────────────────────────────────────
 
 def _fat_dist_aba_funcional(wb, df, mes_ref):
-    COR = '065F46'
+    COR = '1E3A5F'
     ws  = wb.create_sheet('Funcional')
     ws.sheet_view.showGridLines = False
 
-    COLUNAS = ['Centro de Custo', 'Coleta', 'Número Referência', 'Destinatário',
+    COLUNAS = ['Centro de Custo', 'Data', 'Registro', 'Destinatário',
                'Cidade', 'Nota Fiscal', 'Valor N.F.', 'Volume', 'Peso Taxado',
                'Frete Peso', 'Seguro', 'Manuseio', 'ITR', 'Despacho',
                'SEC/CAT', 'Taxa ICMS', 'Valor ICMS', 'Outros', 'Valor Frete']
@@ -6133,7 +6124,7 @@ def _fat_dist_aba_funcional(wb, df, mes_ref):
         cur_row += 2
 
     total_geral = sum(totais_cc.values())
-    _fat_dist_linha_total(ws, cur_row, 'TOTAL GERAL', total_geral, N_COLS, COL_FRETE, '1A202C')
+    _fat_dist_linha_total(ws, cur_row, 'TOTAL GERAL', total_geral, N_COLS, COL_FRETE, '0F172A')
     _fat_dist_ajusta_larguras(ws, [30, 14, 20, 38, 18, 16, 12, 8, 10, 10, 10, 8,
                                     8, 10, 10, 10, 12, 10, 12])
 
@@ -8607,7 +8598,7 @@ class App:
                 dp_editando[0][0].set('')
                 # foca entry
                 try: dp_editando[0][2].winfo_children()[0].focus_set()
-                except Exception: pass
+                except: pass
 
         tk.Button(frm_tb, text='➕ Adicionar', font=('Segoe UI', 8, 'bold'),
                   bg=COR_ACCENT4, fg='white', relief='flat', padx=10, pady=5,
