@@ -343,7 +343,7 @@ def processar_fretes(caminho, log, _saida_override=None):
         # Calcula peso x volume = Peso Taxado ÷ Volume
         if 'Peso Taxado' in df_emb_raw.columns and 'Volume' in df_emb_raw.columns:
             df_emb_raw['peso x volume'] = df_emb_raw.apply(
-                lambda r: r['Peso Taxado'] / r['Volume'] if r['Volume'] and r['Volume'] != 0 else 0,
+                lambda r: r['Peso Taxado'] / r['Volume'] if r['Volume'] else 0,
                 axis=1
             )
             log("✅ Coluna 'peso x volume' calculada automaticamente (Peso Taxado ÷ Volume).\n")
@@ -544,6 +544,7 @@ COR_ACCENT8            = '#0891b2'  # azul-petróleo — recebimentos
 COR_PAGAR              = '#dc2626'  # vermelho — contas a pagar
 COR_RECEBER            = '#16a34a'  # verde — contas a receber
 COR_FAT_ARM            = '#7c3aed'  # violeta — faturamento armazenagem
+COR_FAT_DIST           = '#ea580c'  # laranja — faturamento distribuição
 PASTA_CONSOLIDADOS   = r'Z:\GUSTAVO\App\Consolidados'
 DE_PARA_PATH        = os.path.join(os.path.expanduser('~'), 'central_relatorios_de_para.json')
 DB_ESTOQUE_PATH     = os.path.join(os.path.expanduser('~'), 'central_relatorios_estoque_db.json')
@@ -592,6 +593,11 @@ RELATORIOS_CONFIG = {
     'Financeiro': {
         'icone': '💰', 'cor': '#16a34a',
         'arquivo_base': 'relatorio_financeiro',
+        'pasta': PASTA_FINANCEIRO,
+    },
+    'Faturamento Distribuição': {
+        'icone': '🚛', 'cor': '#ea580c',
+        'arquivo_base': 'Fat_Distribuicao',
         'pasta': PASTA_FINANCEIRO,
     },
     'Dashboard': {
@@ -662,12 +668,14 @@ def _notificar_windows(titulo, mensagem, icone_path=None):
         pass
     # Fallback: PowerShell notification
     try:
+        _titulo_safe   = titulo.replace("'", "")
+        _mensagem_safe = mensagem.replace("'", "")
         ps_script = f"""
 Add-Type -AssemblyName System.Windows.Forms
 $notify = New-Object System.Windows.Forms.NotifyIcon
 $notify.Icon = [System.Drawing.SystemIcons]::Information
 $notify.Visible = $true
-$notify.ShowBalloonTip(6000, '{titulo}', '{mensagem}', [System.Windows.Forms.ToolTipIcon]::Info)
+$notify.ShowBalloonTip(6000, '{_titulo_safe}', '{_mensagem_safe}', [System.Windows.Forms.ToolTipIcon]::Info)
 Start-Sleep -Seconds 7
 $notify.Dispose()
 """
@@ -2139,8 +2147,9 @@ def _prod_parse_ini(d_col, h_col):
     try:
         d  = str(d_col).split()[0]
         dt = pd.to_datetime(d + ' ' + str(h_col), errors='coerce')
-        if pd.isna(dt) or not (2020 <= dt.year <= 2025): return pd.NaT
-        if dt.hour < 5 or dt.hour > 22:                  return pd.NaT
+        _ano_max = datetime.now().year + 1
+        if pd.isna(dt) or not (2020 <= dt.year <= _ano_max): return pd.NaT
+        if dt.hour < 5 or dt.hour > 22:                      return pd.NaT
         return dt
     except (ValueError, TypeError):
         return pd.NaT
@@ -2149,7 +2158,8 @@ def _prod_parse_fim(d_col, h_col, ini):
     try:
         d  = str(d_col).split()[0]
         dt = pd.to_datetime(d + ' ' + str(h_col), errors='coerce')
-        if pd.isna(dt) or not (2020 <= dt.year <= 2025): return pd.NaT
+        _ano_max = datetime.now().year + 1
+        if pd.isna(dt) or not (2020 <= dt.year <= _ano_max): return pd.NaT
         if pd.notna(ini) and (dt - ini) > timedelta(hours=9): return pd.NaT
         return dt
     except (ValueError, TypeError):
@@ -2238,7 +2248,7 @@ def _prod_formatar_resumo(ws):
                 cell.alignment = Alignment(horizontal='center', vertical='center')
             elif pct_col and ci == pct_col:
                 try:   _prod_fmt_pct(cell, float(cell.value))
-                except: pass
+                except Exception: pass
             else:
                 cell.fill      = PatternFill(fill_type='solid', fgColor=bg)
                 cell.font      = Font(name='Calibri', size=10)
@@ -2633,7 +2643,14 @@ def _dash_coletar_dados(mes_ano_str, overrides, log):
 
 def _dash_exportar_excel(dados, mes_ano_str, pasta_saida, log):
     """Gera o Excel do Dashboard consolidado."""
-    mm, aaaa = mes_ano_str.split('-')
+    try:
+        partes = mes_ano_str.split('-')
+        if len(partes) != 2:
+            raise ValueError(f"Formato inválido: '{mes_ano_str}'. Esperado MM-AAAA.")
+        mm, aaaa = partes
+    except ValueError as e:
+        log(f"❌ Erro no formato do mês/ano: {e}\n")
+        return None
     nome_arq  = f'dashboard_{mm}-{aaaa}.xlsx'
     subpasta  = os.path.join(pasta_saida, aaaa)
     try:
@@ -2810,7 +2827,14 @@ def _consolidar_historico(dados, mes_ano_str, log):
     Cada mês ocupa uma aba (ex: Jan-2026). Se já existir, substitui.
     Estrutura da aba: Resumo Geral + tabelas detalhadas de cada módulo.
     """
-    mm, aaaa = mes_ano_str.split('-')
+    try:
+        partes = mes_ano_str.split('-')
+        if len(partes) != 2:
+            raise ValueError(f"Formato inválido: '{mes_ano_str}'. Esperado MM-AAAA.")
+        mm, aaaa = partes
+    except ValueError as e:
+        log(f"❌ Erro no formato do mês/ano ao consolidar histórico: {e}\n")
+        return
     _MESES_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
                  'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
     nome_aba  = f'{_MESES_PT[int(mm)-1][:3]}-{aaaa}'   # ex: Mar-2026
@@ -5148,6 +5172,1064 @@ def run_faturamento_armazenagem(arquivo_mov, arquivo_volumes, mes_ref, log,
     return saida
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# MÓDULO — FATURAMENTO DISTRIBUIÇÃO
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# ── Constantes de mapeamento ──────────────────────────────────────────────────
+
+# Clientes que aparecem na aba Geral (sem breakdown de CC)
+_GERAL_CLIENTES = {
+    'FAZBEM SAPHNELO':   [],          # identificado via Centro de Custo
+    'BHC - Xofigo':      ['BHC', 'XOFIGO'],
+    'CELLTRION':         ['CELLTRION HEALTHCARE'],
+    'CM HOSPITALAR':     ['CM HOSPITALAR'],
+    'GSK CASA':          ['GSK CASA'],
+    'GSK BLENREP':       ['GSK BLENREP'],
+    'PROJETO ALNYLAM':   ['PROJETO ALNYLAM'],
+}
+
+_GERAL_ORDEM = [
+    'FAZBEM SAPHNELO', 'BHC - Xofigo', 'CELLTRION',
+    'CM HOSPITALAR', 'GSK CASA', 'GSK BLENREP', 'PROJETO ALNYLAM',
+]
+
+# Clientes com aba própria + breakdown por Centro de Custo
+_CC_CLIENTES = {
+    'ADITUS':      ['ADITUS HEALTH'],
+    'BIOGEN':      ['BIOGEN BRASIL'],
+    'CSL BEHRING': ['CSL BEHRING'],
+    'IPSEN':       ['IPSEN FARMACEUTICA'],
+    'YELUM':       ['YELUM SEGURADORA'],
+}
+
+_CC_ORDEM = ['ADITUS', 'BIOGEN', 'CSL BEHRING', 'IPSEN', 'YELUM']
+
+
+def _fat_dist_fmt_data(val):
+    if pd.isnull(val):
+        return ''
+    try:
+        if isinstance(val, str):
+            val = pd.to_datetime(val, dayfirst=True)
+        return val.strftime('%d/%m/%Y')
+    except Exception:
+        return str(val)
+
+
+def _fat_dist_fmt_num(val):
+    try:
+        return round(float(val), 2)
+    except Exception:
+        return 0.0
+
+
+def _fat_dist_str(val):
+    """Converte para string ignorando NaN/None."""
+    if val is None:
+        return ''
+    try:
+        import math
+        if isinstance(val, float) and math.isnan(val):
+            return ''
+    except Exception:
+        pass
+    s = str(val)
+    return '' if s.lower() == 'nan' else s
+
+
+def _fat_dist_ajusta_larguras(ws, larguras):
+    from openpyxl.utils import get_column_letter
+    for ci, larg in enumerate(larguras, 1):
+        ws.column_dimensions[get_column_letter(ci)].width = larg
+
+
+def _fat_dist_titulo_pagina(ws, titulo, n_colunas):
+    from openpyxl.styles import Font, PatternFill, Alignment
+    row = 1
+    ws.cell(row=row, column=1, value=titulo)
+    ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=n_colunas)
+    c = ws.cell(row=row, column=1)
+    c.font      = Font(name='Arial', bold=True, size=12, color='FFFFFF')
+    c.fill      = PatternFill('solid', start_color='1A202C')
+    c.alignment = Alignment(horizontal='center', vertical='center')
+    ws.row_dimensions[row].height = 22
+    ws.cell(row=2, column=1, value=None)  # linha em branco
+
+
+def _fat_dist_cabecalho_linha(ws, row, colunas, cor_hex):
+    from openpyxl.styles import Font, PatternFill, Alignment
+    for ci, col in enumerate(colunas, 1):
+        c = ws.cell(row=row, column=ci, value=col)
+        c.font      = Font(name='Arial', bold=True, size=8, color='FFFFFF')
+        c.fill      = PatternFill('solid', start_color=cor_hex.lstrip('#'))
+        c.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+    ws.row_dimensions[row].height = 16
+
+
+def _fat_dist_titulo_bloco(ws, row, titulo, n_colunas, cor_hex):
+    from openpyxl.styles import Font, PatternFill, Alignment
+    ws.cell(row=row, column=1, value=f'  {titulo}')
+    ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=n_colunas)
+    c = ws.cell(row=row, column=1)
+    c.font      = Font(name='Arial', bold=True, size=10, color='FFFFFF')
+    c.fill      = PatternFill('solid', start_color=cor_hex.lstrip('#'))
+    c.alignment = Alignment(horizontal='left', vertical='center')
+    ws.row_dimensions[row].height = 18
+
+
+
+def _fat_dist_linha_dados(ws, row, valores, fmt_moeda_cols=None, fmt_extra=None):
+    """fmt_extra: dict {col_index: format_string} para formatos específicos por coluna."""
+    from openpyxl.styles import Font, Alignment, Border, Side
+    fmt_moeda_cols = fmt_moeda_cols or set()
+    fmt_extra      = fmt_extra or {}
+    borda = Border(bottom=Side(style='thin', color='D0D0D0'))
+    for ci, val in enumerate(valores, 1):
+        c = ws.cell(row=row, column=ci, value=val)
+        c.font      = Font(name='Arial', size=9)
+        c.alignment = Alignment(vertical='center')
+        c.border    = borda
+        if ci in fmt_moeda_cols and isinstance(val, (int, float)):
+            c.number_format  = '#,##0.00'
+            c.alignment      = Alignment(horizontal='right', vertical='center')
+        elif ci in fmt_extra and isinstance(val, (int, float)):
+            c.number_format  = fmt_extra[ci]
+            c.alignment      = Alignment(horizontal='right', vertical='center')
+
+
+def _fat_dist_linha_total(ws, row, label, valor, n_colunas, col_valor, cor_hex):
+    valor = round(float(valor), 2)
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    fill  = PatternFill('solid', start_color=cor_hex.lstrip('#'))
+    borda = Border(top=Side(style='medium', color='888888'))
+    ws.cell(row=row, column=1, value=label)
+    if col_valor > 1:
+        ws.merge_cells(start_row=row, start_column=1,
+                       end_row=row, end_column=col_valor - 1)
+    for ci in range(1, n_colunas + 1):
+        c = ws.cell(row=row, column=ci)
+        c.fill   = fill
+        c.border = borda
+        c.font   = Font(name='Arial', bold=True, size=9, color='FFFFFF')
+    ws.cell(row=row, column=1).alignment = Alignment(horizontal='right', vertical='center')
+    cv = ws.cell(row=row, column=col_valor, value=valor)
+    cv.number_format = '#,##0.00'
+    cv.alignment     = Alignment(horizontal='right', vertical='center')
+    ws.row_dimensions[row].height = 16
+
+
+ISS_RATE = 0.02  # alíquota padrão 2%
+
+def _fat_dist_cabecalho_doc(ws, row, cliente, cc=None, n_colunas=5):
+    """Cabeçalho de documento acima de cada bloco de CC.
+    Estrutura:
+      linha 1: RELAÇÃO FATURAMENTO — DISTRIBUIÇÃO
+      linha 2: <cliente> [ - <cc> ]
+      linha 3: NF: _____________
+    """
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+
+    COR_TITULO = 'F97316'   # laranja claro
+    COR_INFO   = 'FFF7ED'   # fundo quase branco
+    borda_ext  = Border(
+        top=Side(style='medium', color='EA580C'),
+        bottom=Side(style='thin', color='EA580C'),
+        left=Side(style='medium', color='EA580C'),
+        right=Side(style='medium', color='EA580C'),
+    )
+    borda_mid  = Border(
+        left=Side(style='medium', color='EA580C'),
+        right=Side(style='medium', color='EA580C'),
+    )
+
+    def _merge_row(r, valor, bold=False, sz=9, cor_txt='1A202C', bg=None, align='left', border=None):
+        ws.cell(r, 1, valor)
+        ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=n_colunas)
+        c = ws.cell(r, 1)
+        c.font      = Font(name='Arial', bold=bold, size=sz, color=cor_txt)
+        c.alignment = Alignment(horizontal=align, vertical='center', indent=1)
+        if bg:
+            for ci in range(1, n_colunas + 1):
+                ws.cell(r, ci).fill = PatternFill('solid', start_color=bg)
+        if border:
+            for ci in range(1, n_colunas + 1):
+                ws.cell(r, ci).border = border
+        ws.row_dimensions[r].height = 14
+
+    # Linha 1 — título
+    _merge_row(row,     'RELAÇÃO FATURAMENTO — DISTRIBUIÇÃO',
+               bold=True, sz=9, cor_txt='FFFFFF', bg=COR_TITULO,
+               align='center', border=borda_ext)
+    ws.row_dimensions[row].height = 16
+
+    # Linha 2 — cliente [ - CC ]
+    label = cliente if not cc else f'{cliente}  —  {cc}'
+    _merge_row(row + 1, label,
+               bold=True, sz=9, cor_txt='78350F', bg=COR_INFO,
+               border=borda_mid)
+    ws.row_dimensions[row + 1].height = 14
+
+    # Linha 3 — NF em branco
+    _merge_row(row + 2, 'NF:',
+               bold=False, sz=9, cor_txt='374151', bg=COR_INFO,
+               border=Border(
+                   bottom=Side(style='medium', color='EA580C'),
+                   left=Side(style='medium', color='EA580C'),
+                   right=Side(style='medium', color='EA580C'),
+               ))
+    ws.row_dimensions[row + 2].height = 14
+
+    return row + 3   # retorna próxima linha livre após o cabeçalho
+
+
+def _fat_dist_bloco_iss(ws, row, subtotal, label_sub, n_colunas, col_valor, cor_sub, cor_total='111827'):
+    """Renderiza bloco coeso de 3 linhas: SUBTOTAL / ISS 2% / TOTAL A PAGAR."""
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+
+    iss         = round(subtotal * ISS_RATE, 2)
+    total_pagar = round(subtotal + iss, 2)
+
+    def _fill_row(r, label, valor, cor, sz=9):
+        fill  = PatternFill('solid', start_color=cor.lstrip('#'))
+        borda = Border(top=Side(style='thin', color='888888'))
+        ws.cell(r, 1, label)
+        if col_valor > 1:
+            ws.merge_cells(start_row=r, start_column=1,
+                           end_row=r, end_column=col_valor - 1)
+        for ci in range(1, n_colunas + 1):
+            c = ws.cell(r, ci)
+            c.fill   = fill
+            c.border = borda
+            c.font   = Font(name='Arial', bold=True, size=sz, color='FFFFFF')
+        ws.cell(r, 1).alignment = Alignment(horizontal='right', vertical='center')
+        cv = ws.cell(r, col_valor, valor)
+        cv.number_format = '#,##0.00'
+        cv.alignment     = Alignment(horizontal='right', vertical='center')
+        ws.row_dimensions[r].height = 15
+
+    _fill_row(row,     label_sub,           subtotal,    cor_sub, sz=9)
+    _fill_row(row + 1, 'ISS  2%',           iss,         'B45309', sz=8)
+    _fill_row(row + 2, 'TOTAL A PAGAR',     total_pagar, cor_total, sz=10)
+    ws.row_dimensions[row + 2].height = 18
+    return total_pagar   # retorna para acumular no fechamento
+
+
+# ── Aba 1 — Geral ─────────────────────────────────────────────────────────────
+
+def _fat_dist_aba_fechamento(wb, df, mes_ref):
+    """Aba 0 — Fechamento: capa consolidada com totais por grupo."""
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+
+    ISS_RATE = 0.02
+
+    # ── Calcula totais a partir do df ──────────────────────────────────────────
+    def _soma(mask):
+        return round(float(df[mask]['Valor Frete'].sum()), 2)
+
+    def _qtd(mask):
+        return int(df[mask].shape[0])
+
+    # Geral — clientes simples (sem CC)
+    geral_rows = []
+    for rotulo in _GERAL_ORDEM:
+        if rotulo == 'FAZBEM SAPHNELO':
+            mask = (df['Cliente Faturado'].str.upper().str.contains('EPHARMA', na=False) &
+                    df['Centro de Custo'].str.upper().str.contains('FAZ BEM', na=False))
+        else:
+            substrings = _GERAL_CLIENTES.get(rotulo, [])
+            if not substrings:
+                continue
+            mask = df['Cliente Faturado'].str.upper().apply(
+                lambda x, s=substrings: any(sub.upper() in x for sub in s))
+        if not df[mask].empty:
+            geral_rows.append((rotulo, _qtd(mask), _soma(mask)))
+
+    # Clientes com aba própria (com CC)
+    # Para o Fechamento, calculamos total_frete e total_a_pagar separadamente
+    _ISS_MAP_FECH = {
+        'ADITUS':      True,
+        'BIOGEN':      {'MARKETING AF', 'MS MARKETING', 'SMA MARKETING'},
+        'CSL BEHRING': True,
+        'IPSEN':       True,
+        'YELUM':       None,
+    }
+    cc_rows = []
+    for rotulo in _CC_ORDEM:
+        substrings = _CC_CLIENTES[rotulo]
+        mask_cli = df['Cliente Faturado'].str.upper().apply(
+            lambda x, s=substrings: any(sub.upper() in x for sub in s))
+        df_cli = df[mask_cli]
+        if df_cli.empty:
+            continue
+        qtd         = int(df_cli.shape[0])
+        total_frete = round(float(df_cli['Valor Frete'].sum()), 2)
+        iss_rule    = _ISS_MAP_FECH.get(rotulo)
+        if iss_rule is None:
+            iss_val = 0.0
+        elif iss_rule is True:
+            iss_val = round(total_frete * ISS_RATE, 2)
+        else:
+            # set de CCs elegíveis
+            mask_iss = df_cli['Centro de Custo'].isin(iss_rule)
+            iss_base = round(float(df_cli[mask_iss]['Valor Frete'].sum()), 2)
+            iss_val  = round(iss_base * ISS_RATE, 2)
+        total_pagar = round(total_frete + iss_val, 2)
+        cc_rows.append((rotulo, qtd, total_frete, iss_val, total_pagar))
+
+    # EPH
+    mask_astra = (df['Cliente Faturado'].str.upper().str.contains('EPHARMA', na=False) &
+                  df['Centro de Custo'].str.upper().str.contains('ASTRA', na=False) &
+                  ~df['Centro de Custo'].str.upper().str.contains('FAZ BEM', na=False))
+    mask_mat   = (df['Cliente Faturado'].str.upper().str.contains('EPHARMA', na=False) &
+                  ~df['Centro de Custo'].str.upper().str.contains('ASTRA', na=False) &
+                  ~df['Centro de Custo'].str.upper().str.contains('FAZ BEM', na=False))
+    eph_rows = [
+        ('EPH - Astrazeneca', _qtd(mask_astra), _soma(mask_astra)),
+        ('EPH - MATRIZ',      _qtd(mask_mat),   _soma(mask_mat)),
+    ]
+
+    # Pint Pharma
+    mask_pint  = df['Cliente Faturado'].str.upper().str.contains('PINT PHARMA', na=False)
+    pint_total = _soma(mask_pint)
+    pint_iss   = round(pint_total * ISS_RATE, 2)
+    pint_pagar = round(pint_total + pint_iss, 2)
+
+    # Funcional
+    mask_func  = df['Cliente Faturado'].str.upper().str.contains('FUNCIONAL HEALTH', na=False)
+    func_total = _soma(mask_func)
+    func_qtd   = _qtd(mask_func)
+
+    # Para CELLTRION e BHC - Xofigo: adiciona ISS 2% no subtotal
+    _ISS_GERAL_FECH = {'CELLTRION', 'BHC - Xofigo'}
+    total_geral_simples = 0.0
+    for (rotulo, qtd, total) in geral_rows:
+        if rotulo in _ISS_GERAL_FECH:
+            total_geral_simples += round(total * (1 + ISS_RATE), 2)
+        else:
+            total_geral_simples += total
+    subtotal_geral = round(total_geral_simples + sum(r[4] for r in cc_rows), 2)
+    subtotal_eph   = round(sum(r[2] for r in eph_rows), 2)
+    grand_total    = round(subtotal_geral + subtotal_eph + pint_total + func_total, 2)
+
+    # ── Estilos ────────────────────────────────────────────────────────────────
+    COR_HEADER = '1A202C'
+    COR_GERAL  = 'EA580C'
+    COR_EPH    = '1D4ED8'
+    COR_PINT   = '7C3AED'
+    COR_FUNC   = '065F46'
+    COR_GTOTAL = '111827'
+    COR_ALT    = 'F9FAFB'
+
+    bd_b = Border(bottom=Side(style='thin',   color='E5E7EB'))
+    bd_t = Border(top=Side(style='medium',    color='9CA3AF'))
+
+    def _hdr(row, col, val, cor, bold=True, align='center', colspan=1, fg='FFFFFF', sz=9):
+        c = ws.cell(row=row, column=col, value=val)
+        c.font      = Font(name='Arial', bold=bold, size=sz, color=fg)
+        c.fill      = PatternFill('solid', start_color=cor)
+        c.alignment = Alignment(horizontal=align, vertical='center')
+        if colspan > 1:
+            ws.merge_cells(start_row=row, start_column=col,
+                           end_row=row, end_column=col + colspan - 1)
+        ws.row_dimensions[row].height = 18
+
+    def _dat(row, col, val, bold=False, align='left', num_fmt=None,
+             cor_txt='000000', bg=None):
+        c = ws.cell(row=row, column=col, value=val)
+        c.font      = Font(name='Arial', bold=bold, size=9, color=cor_txt)
+        c.alignment = Alignment(horizontal=align, vertical='center')
+        c.border    = bd_b
+        if num_fmt:
+            c.number_format = num_fmt
+        if bg:
+            c.fill = PatternFill('solid', start_color=bg)
+        ws.row_dimensions[row].height = 15
+
+    def _subtotal_row(row, label, val, cor, col_val=4, n=6):
+        for ci in range(2, n + 1):
+            c = ws.cell(row=row, column=ci)
+            c.fill   = PatternFill('solid', start_color=cor)
+            c.border = bd_t
+            c.font   = Font(name='Arial', bold=True, size=9, color='FFFFFF')
+        ws.cell(row=row, column=2, value=label).alignment = Alignment(
+            horizontal='right', vertical='center')
+        cv = ws.cell(row=row, column=col_val, value=val)
+        cv.number_format = 'R$ #,##0.00'
+        cv.alignment     = Alignment(horizontal='right', vertical='center')
+        ws.row_dimensions[row].height = 16
+
+    def _link(row, col, texto, aba_destino):
+        """Célula com hyperlink interno para outra aba — sem sublinhado."""
+        c = ws.cell(row=row, column=col)
+        c.hyperlink = f"#{aba_destino}!A1"
+        c.font  = Font(name='Arial', bold=True, size=9, color='EA580C')
+        c.value = texto
+
+    def _sep(row):
+        for ci in range(1, 8):
+            ws.cell(row=row, column=ci).fill = PatternFill('solid', start_color='F3F4F6')
+        ws.row_dimensions[row].height = 5
+
+    # ── Monta aba ─────────────────────────────────────────────────────────────
+    ws = wb.create_sheet('Fechamento', 0)   # inserir como primeira aba
+    ws.sheet_view.showGridLines = False
+
+    # Larguras: A=margem, B=cliente, C=qtd, D=frete, E=ISS, F=total pagar, G=margem
+    for col, w in zip('ABCDEFG', [3, 28, 12, 16, 16, 16, 3]):
+        ws.column_dimensions[col].width = w
+
+    r = 1
+    ws.row_dimensions[r].height = 8
+    r += 1
+
+    # Título
+    _hdr(r, 2, f'FECHAMENTO DISTRIBUIÇÃO  —  {mes_ref.upper()}',
+         COR_HEADER, bold=True, colspan=5, sz=13)
+    ws.row_dimensions[r].height = 30
+    r += 1
+    ws.row_dimensions[r].height = 8
+    r += 1
+
+    # ── GERAL ─────────────────────────────────────────────────────────────────
+    _hdr(r, 2, '  CLIENTES GERAIS', COR_GERAL, align='left', colspan=5)
+    r += 1
+    for col, lbl, al in [(2,'Cliente','left'),(3,'Entregas','center'),
+                          (4,'Valor do Frete','right'),(5,'ISS (2%)','right'),
+                          (6,'Total a Pagar','right')]:
+        _hdr(r, col, lbl, 'D1D5DB', bold=True, align=al, fg='374151')
+    r += 1
+    # Clientes com aba própria (CC) — aparecem primeiro com indicador
+    # cc_rows: (rotulo, qtd, total_frete, iss_val, total_pagar)
+    for i, (nome, qtd, total_frete, iss_val, total_pagar) in enumerate(cc_rows):
+        bg = COR_ALT if i % 2 == 0 else None
+        _dat(r, 2, nome + '  ›', bold=True, bg=bg, cor_txt='78350F')
+        _link(r, 2, nome + '  ›', nome)
+        _dat(r, 3, qtd,         align='center', num_fmt='#,##0', bg=bg)
+        _dat(r, 4, total_frete, align='right', num_fmt='R$ #,##0.00', bg=bg)
+        if iss_val > 0:
+            _dat(r, 5, iss_val,    align='right', num_fmt='R$ #,##0.00',
+                 bg=bg, cor_txt='B45309')
+            _dat(r, 6, total_pagar, align='right', num_fmt='R$ #,##0.00',
+                 bg=bg, cor_txt='7C3AED')
+        else:
+            _dat(r, 5, '', bg=bg)
+            _dat(r, 6, '', bg=bg)
+        r += 1
+    # Separador visual
+    if cc_rows and geral_rows:
+        for ci in range(2, 7):
+            ws.cell(row=r, column=ci).fill = PatternFill('solid', start_color='FED7AA')
+        ws.row_dimensions[r].height = 3
+        r += 1
+    # Clientes simples (sem CC)
+    for i, (nome, qtd, total) in enumerate(geral_rows):
+        bg = COR_ALT if i % 2 == 0 else None
+        _dat(r, 2, nome,  bg=bg)
+        _link(r, 2, nome, 'Geral')
+        _dat(r, 3, qtd,   align='center', num_fmt='#,##0', bg=bg)
+        _dat(r, 4, total, align='right', num_fmt='R$ #,##0.00', bg=bg)
+        _dat(r, 5, '',    bg=bg)
+        _dat(r, 6, '',    bg=bg)
+        r += 1
+    _subtotal_row(r, 'SUBTOTAL — CLIENTES GERAIS', subtotal_geral, COR_GERAL)
+    r += 1
+    _sep(r); r += 1
+
+    # ── EPH ───────────────────────────────────────────────────────────────────
+    _hdr(r, 2, '  EPHARMA', COR_EPH, align='left', colspan=5)
+    r += 1
+    for col, lbl, al in [(2,'Divisão','left'),(3,'Entregas','center'),
+                          (4,'Valor do Frete','right'),(5,'','left'),(6,'','left')]:
+        _hdr(r, col, lbl, 'D1D5DB', bold=True, align=al, fg='374151')
+    r += 1
+    _EPH_ABA_MAP = {'EPH - Astrazeneca': 'EPH - Astrazeneca', 'EPH - MATRIZ': 'EPH - MATRIZ'}
+    for i, (nome, qtd, total) in enumerate(eph_rows):
+        bg = COR_ALT if i % 2 == 0 else None
+        _dat(r, 2, nome,  bg=bg)
+        _link(r, 2, nome, _EPH_ABA_MAP.get(nome, nome))
+        _dat(r, 3, qtd,   align='center', num_fmt='#,##0', bg=bg)
+        _dat(r, 4, total, align='right', num_fmt='R$ #,##0.00', bg=bg)
+        _dat(r, 5, '',    bg=bg)
+        _dat(r, 6, '',    bg=bg)
+        r += 1
+    _subtotal_row(r, 'SUBTOTAL — EPHARMA', subtotal_eph, COR_EPH)
+    r += 1
+    _sep(r); r += 1
+
+    # ── PINT PHARMA ───────────────────────────────────────────────────────────
+    _hdr(r, 2, '  PINT PHARMA', COR_PINT, align='left', colspan=5)
+    r += 1
+    for col, lbl, al in [(2,'Cliente','left'),(3,'Entregas','center'),
+                          (4,'Valor do Frete','right'),(5,'ISS (2%)','right'),
+                          (6,'Total a Pagar','right')]:
+        _hdr(r, col, lbl, 'D1D5DB', bold=True, align=al, fg='374151')
+    r += 1
+    _dat(r, 2, 'Pint Pharma', bg=COR_ALT)
+    _link(r, 2, 'Pint Pharma', 'Pint Pharma')
+    _dat(r, 3, _qtd(mask_pint), align='center', num_fmt='#,##0', bg=COR_ALT)
+    _dat(r, 4, pint_total, align='right', num_fmt='R$ #,##0.00', bg=COR_ALT)
+    _dat(r, 5, pint_iss,   align='right', num_fmt='R$ #,##0.00', bg=COR_ALT, cor_txt='DC2626')
+    _dat(r, 6, pint_pagar, align='right', num_fmt='R$ #,##0.00', bg=COR_ALT, cor_txt='7C3AED')
+    r += 1
+    _subtotal_row(r, 'TOTAL A PAGAR — PINT PHARMA', pint_pagar, COR_PINT, col_val=6)
+    r += 1
+    _sep(r); r += 1
+
+    # ── FUNCIONAL ─────────────────────────────────────────────────────────────
+    _hdr(r, 2, '  FUNCIONAL', COR_FUNC, align='left', colspan=5)
+    r += 1
+    for col, lbl, al in [(2,'Cliente','left'),(3,'Entregas','center'),
+                          (4,'Valor do Frete','right'),(5,'','left'),(6,'','left')]:
+        _hdr(r, col, lbl, 'D1D5DB', bold=True, align=al, fg='374151')
+    r += 1
+    _dat(r, 2, 'Funcional Health Tech', bg=COR_ALT)
+    _link(r, 2, 'Funcional Health Tech', 'Funcional')
+    _dat(r, 3, func_qtd,   align='center', num_fmt='#,##0', bg=COR_ALT)
+    _dat(r, 4, func_total, align='right', num_fmt='R$ #,##0.00', bg=COR_ALT)
+    _dat(r, 5, '',         bg=COR_ALT)
+    _dat(r, 6, '',         bg=COR_ALT)
+    r += 1
+    _subtotal_row(r, 'SUBTOTAL — FUNCIONAL', func_total, COR_FUNC)
+    r += 1
+    _sep(r); r += 1
+    _sep(r); r += 1
+
+    # ── TOTAL GERAL ───────────────────────────────────────────────────────────
+    for ci in range(2, 7):
+        c = ws.cell(row=r, column=ci)
+        c.fill = PatternFill('solid', start_color=COR_GTOTAL)
+        c.font = Font(name='Arial', bold=True, size=12, color='FFFFFF')
+    ws.cell(r, 2, 'TOTAL GERAL').alignment = Alignment(horizontal='right', vertical='center')
+    cv = ws.cell(r, 4, grand_total)
+    cv.number_format = 'R$ #,##0.00'
+    cv.alignment     = Alignment(horizontal='right', vertical='center')
+    ws.row_dimensions[r].height = 26
+    r += 1
+
+    # Nota ISS
+    nota = ws.cell(row=r, column=4,
+                   value=f'* Pint Pharma inclui ISS R$ {pint_iss:,.2f} — Total a pagar: R$ {pint_pagar:,.2f}')
+    nota.font      = Font(name='Arial', size=7, color='6B7280', italic=True)
+    nota.alignment = Alignment(horizontal='right')
+    ws.merge_cells(start_row=r, start_column=4, end_row=r, end_column=6)
+    ws.row_dimensions[r].height = 12
+
+
+def _fat_dist_aba_geral(wb, df, mes_ref):
+    """Aba Geral — clientes simples sem breakdown de CC.
+    CELLTRION e BHC - Xofigo incluem bloco ISS 2%."""
+    COR_BLK = 'EA580C'
+    COR_CAB = '4A5568'
+    # Clientes desta aba que têm ISS
+    _ISS_GERAL = {'CELLTRION', 'BHC - Xofigo'}
+
+    ws = wb.create_sheet('Geral')
+    ws.sheet_view.showGridLines = False
+
+    COLUNAS   = ['Coleta', 'Número Referência', 'Destinatário',
+                 'Cidade Destinatário', 'Valor do Frete']
+    N_COLS    = len(COLUNAS)
+    COL_FRETE = 5
+
+    _fat_dist_titulo_pagina(ws, f'GERAL — {mes_ref.upper()}', N_COLS)
+    cur_row = 3
+
+    for rotulo in _GERAL_ORDEM:
+        if rotulo == 'FAZBEM SAPHNELO':
+            mask = (df['Cliente Faturado'].str.upper().str.contains('EPHARMA', na=False) &
+                    df['Centro de Custo'].str.upper().str.contains('FAZ BEM', na=False))
+        else:
+            substrings = _GERAL_CLIENTES.get(rotulo, [])
+            if not substrings:
+                continue
+            mask = df['Cliente Faturado'].str.upper().apply(
+                lambda x, s=substrings: any(sub.upper() in x for sub in s))
+
+        linhas = df[mask]
+        if linhas.empty:
+            continue
+
+        cur_row = _fat_dist_cabecalho_doc(ws, cur_row, rotulo, None, N_COLS)
+        _fat_dist_cabecalho_linha(ws, cur_row, COLUNAS, COR_CAB)
+        cur_row += 1
+
+        total_cli = 0.0
+        for _, r in linhas.iterrows():
+            frete = _fat_dist_fmt_num(r.get('Valor Frete'))
+            _fat_dist_linha_dados(
+                ws, cur_row,
+                [_fat_dist_fmt_data(r.get('Coleta')),
+                 _fat_dist_str(r.get('Número Referência')),
+                 _fat_dist_str(r.get('Destinatário')),
+                 _fat_dist_str(r.get('Cidade Destinatário')),
+                 frete],
+                fmt_moeda_cols={COL_FRETE},
+            )
+            cur_row += 1
+            total_cli += frete
+
+        if rotulo in _ISS_GERAL:
+            _fat_dist_bloco_iss(ws, cur_row, total_cli,
+                                f'TOTAL — {rotulo}', N_COLS, COL_FRETE, COR_BLK)
+            cur_row += 4  # 3 linhas bloco + 1 espaço
+        else:
+            _fat_dist_linha_total(ws, cur_row, 'TOTAL', total_cli, N_COLS, COL_FRETE, COR_BLK)
+            cur_row += 2
+
+    _fat_dist_ajusta_larguras(ws, [14, 20, 42, 22, 14])
+
+
+def _fat_dist_aba_cliente_cc(wb, df, mes_ref, rotulo, substrings, cc_com_iss=None):
+    """Aba individual para cliente com breakdown por CC.
+
+    cc_com_iss: None  → sem ISS em nenhum CC
+                True  → ISS em todos os CCs
+                set   → ISS apenas nos CCs cujo nome está no set
+    """
+    COR_CLI = 'EA580C'
+    COR_CC  = '78350F'
+    COR_CAB = '4A5568'
+
+    COLUNAS   = ['Coleta', 'Número Referência', 'Destinatário',
+                 'Cidade Destinatário', 'Valor do Frete']
+    N_COLS    = len(COLUNAS)
+    COL_FRETE = 5
+
+    def _cc_tem_iss(cc_nome):
+        if cc_com_iss is None:   return False
+        if cc_com_iss is True:   return True
+        return cc_nome in cc_com_iss
+
+    mask   = df['Cliente Faturado'].str.upper().apply(
+        lambda x, s=substrings: any(sub.upper() in x for sub in s))
+    df_cli = df[mask].copy()
+
+    ws = wb.create_sheet(rotulo)
+    ws.sheet_view.showGridLines = False
+
+    _fat_dist_titulo_pagina(ws, f'{rotulo} — {mes_ref.upper()}', N_COLS)
+    cur_row = 3
+
+    # Sem CC no topo (ponto de atenção)
+    sem_cc = df_cli[df_cli['Centro de Custo'].isna() |
+                    (df_cli['Centro de Custo'].str.strip() == '')]
+    if not sem_cc.empty:
+        _fat_dist_titulo_bloco(ws, cur_row, '⚠  SEM CENTRO DE CUSTO', N_COLS, 'DC2626')
+        cur_row += 1
+        cur_row = _fat_dist_cabecalho_doc(ws, cur_row, rotulo, 'SEM CC', N_COLS)
+        _fat_dist_cabecalho_linha(ws, cur_row, COLUNAS, 'DC2626')
+        cur_row += 1
+        total_sem = 0.0
+        for _, r in sem_cc.iterrows():
+            frete = _fat_dist_fmt_num(r.get('Valor Frete'))
+            _fat_dist_linha_dados(
+                ws, cur_row,
+                [_fat_dist_fmt_data(r.get('Coleta')),
+                 _fat_dist_str(r.get('Número Referência')),
+                 _fat_dist_str(r.get('Destinatário')),
+                 _fat_dist_str(r.get('Cidade Destinatário')),
+                 frete],
+                fmt_moeda_cols={COL_FRETE},
+            )
+            cur_row  += 1
+            total_sem += frete
+        _fat_dist_linha_total(ws, cur_row, 'SUBTOTAL', total_sem, N_COLS, COL_FRETE, 'DC2626')
+        cur_row += 2
+
+    # CCs ordenados
+    df_cc = df_cli[df_cli['Centro de Custo'].notna() &
+                   (df_cli['Centro de Custo'].str.strip() != '')]
+    ccs = sorted(df_cc['Centro de Custo'].unique())
+
+    total_frete_geral = 0.0
+    total_pagar_geral = 0.0
+
+    for cc in ccs:
+        bloco = df_cc[df_cc['Centro de Custo'] == cc]
+
+        cur_row = _fat_dist_cabecalho_doc(ws, cur_row, rotulo, cc, N_COLS)
+        _fat_dist_cabecalho_linha(ws, cur_row, COLUNAS, COR_CAB)
+        cur_row += 1
+
+        total_cc = 0.0
+        for _, r in bloco.iterrows():
+            frete = _fat_dist_fmt_num(r.get('Valor Frete'))
+            _fat_dist_linha_dados(
+                ws, cur_row,
+                [_fat_dist_fmt_data(r.get('Coleta')),
+                 _fat_dist_str(r.get('Número Referência')),
+                 _fat_dist_str(r.get('Destinatário')),
+                 _fat_dist_str(r.get('Cidade Destinatário')),
+                 frete],
+                fmt_moeda_cols={COL_FRETE},
+            )
+            cur_row  += 1
+            total_cc += frete
+
+        total_frete_geral += total_cc
+
+        if _cc_tem_iss(cc):
+            tp = _fat_dist_bloco_iss(ws, cur_row, total_cc,
+                                     f'SUBTOTAL — {cc}', N_COLS, COL_FRETE, COR_CC)
+            total_pagar_geral += tp
+            cur_row += 4  # 3 linhas + 1 espaço
+        else:
+            _fat_dist_linha_total(ws, cur_row, f'SUBTOTAL — {cc}',
+                                  total_cc, N_COLS, COL_FRETE, COR_CC)
+            total_pagar_geral += total_cc
+            cur_row += 2
+
+    # Fechamento geral da aba
+    tem_qualquer_iss = any(_cc_tem_iss(cc) for cc in ccs)
+    if tem_qualquer_iss:
+        # Separa total frete vs total a pagar (pode diferir se alguns CCs têm ISS e outros não)
+        iss_total = round(total_pagar_geral - total_frete_geral, 2)
+        _fat_dist_linha_total(ws, cur_row,
+                              f'TOTAL FRETE — {rotulo}',
+                              total_frete_geral, N_COLS, COL_FRETE, '374151')
+        cur_row += 1
+        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+        ws.cell(cur_row, 1, 'ISS TOTAL  2%')
+        ws.merge_cells(start_row=cur_row, start_column=1,
+                       end_row=cur_row, end_column=COL_FRETE - 1)
+        fill = PatternFill('solid', start_color='B45309')
+        for ci in range(1, N_COLS + 1):
+            c = ws.cell(cur_row, ci)
+            c.fill = fill
+            c.font = Font(name='Arial', bold=True, size=8, color='FFFFFF')
+        ws.cell(cur_row, 1).alignment  = Alignment(horizontal='right', vertical='center')
+        cv = ws.cell(cur_row, COL_FRETE, iss_total)
+        cv.number_format = '#,##0.00'
+        cv.alignment     = Alignment(horizontal='right', vertical='center')
+        ws.row_dimensions[cur_row].height = 15
+        cur_row += 1
+        _fat_dist_linha_total(ws, cur_row,
+                              f'TOTAL A PAGAR — {rotulo}',
+                              total_pagar_geral, N_COLS, COL_FRETE, COR_CLI)
+        ws.row_dimensions[cur_row].height = 20
+    else:
+        _fat_dist_linha_total(ws, cur_row, f'TOTAL — {rotulo}',
+                              total_frete_geral, N_COLS, COL_FRETE, COR_CLI)
+
+    _fat_dist_ajusta_larguras(ws, [14, 20, 42, 22, 14])
+
+
+# ── Aba 2 — EPH Astrazeneca ───────────────────────────────────────────────────
+
+def _fat_dist_aba_eph_astrazeneca(wb, df, mes_ref):
+    COR = '2563EB'
+    ws  = wb.create_sheet('EPH - Astrazeneca')
+    ws.sheet_view.showGridLines = False
+
+    COLUNAS   = ['Coleta', 'Número Referência', 'Destinatário',
+                 'Cidade Destinatário', 'Valor do Frete', 'Obs. Minuta']
+    N_COLS    = len(COLUNAS)
+    COL_FRETE = 5
+
+    _fat_dist_titulo_pagina(ws, f'EPHARMA — ASTRAZENECA — {mes_ref.upper()}', N_COLS)
+
+    mask = (df['Cliente Faturado'].str.upper().str.contains('EPHARMA', na=False) &
+            df['Centro de Custo'].str.upper().str.contains('ASTRA', na=False) &
+            ~df['Centro de Custo'].str.upper().str.contains('FAZ BEM', na=False))
+    linhas = df[mask]
+
+    cur_row = 3
+    cur_row = _fat_dist_cabecalho_doc(ws, cur_row, 'EPHARMA', 'Astrazeneca', N_COLS)
+    _fat_dist_cabecalho_linha(ws, cur_row, COLUNAS, COR)
+    cur_row += 1
+
+    total = 0.0
+    for _, r in linhas.iterrows():
+        frete = _fat_dist_fmt_num(r.get('Valor Frete'))
+        _fat_dist_linha_dados(
+            ws, cur_row,
+            [_fat_dist_fmt_data(r.get('Coleta')),
+             _fat_dist_str(r.get('Número Referência')),
+             _fat_dist_str(r.get('Destinatário')),
+             _fat_dist_str(r.get('Cidade Destinatário')),
+             frete,
+             _fat_dist_str(r.get('Obs. Minuta'))],
+            fmt_moeda_cols={COL_FRETE},
+        )
+        cur_row += 1
+        total += frete
+
+    _fat_dist_linha_total(ws, cur_row, 'TOTAL', total, N_COLS, COL_FRETE, COR)
+    _fat_dist_ajusta_larguras(ws, [14, 20, 38, 20, 14, 50])
+
+
+# ── Aba 3 — EPH MATRIZ ────────────────────────────────────────────────────────
+
+def _fat_dist_aba_eph_matriz(wb, df, mes_ref):
+    COR = '0F766E'
+    ws  = wb.create_sheet('EPH - MATRIZ')
+    ws.sheet_view.showGridLines = False
+
+    COLUNAS = ['Coleta', 'Centro de Custo', 'Nota Fiscal', 'Valor N.F.',
+               'Volume', 'Valor Frete', 'Frete Peso', 'Seguro',
+               'Manuseio', 'Despacho', 'Valor ICMS', 'Embalagem']
+    N_COLS    = len(COLUNAS)
+    COL_FRETE = 6
+    COLS_MOE  = {4, 5, 6, 7, 8, 9, 10, 11, 12}
+
+    _fat_dist_titulo_pagina(ws, f'EPHARMA — MATRIZ — {mes_ref.upper()}', N_COLS)
+
+    mask = (df['Cliente Faturado'].str.upper().str.contains('EPHARMA', na=False) &
+            ~df['Centro de Custo'].str.upper().str.contains('ASTRA', na=False) &
+            ~df['Centro de Custo'].str.upper().str.contains('FAZ BEM', na=False))
+    linhas = df[mask]
+
+    cur_row = 3
+
+    ccs = sorted(linhas['Centro de Custo'].fillna('(sem CC)').unique())
+    totais_cc = {}
+
+    for cc in ccs:
+        bloco    = linhas[linhas['Centro de Custo'].fillna('(sem CC)') == cc]
+        cur_row  = _fat_dist_cabecalho_doc(ws, cur_row, 'EPHARMA', cc, N_COLS)
+        _fat_dist_cabecalho_linha(ws, cur_row, COLUNAS, COR)
+        cur_row += 1
+        total_cc = 0.0
+        for _, r in bloco.iterrows():
+            frete = _fat_dist_fmt_num(r.get('Valor Frete'))
+            _fat_dist_linha_dados(
+                ws, cur_row,
+                [_fat_dist_fmt_data(r.get('Coleta')),
+                 str(cc),
+                 _fat_dist_str(r.get('Nota Fiscal')),
+                 _fat_dist_fmt_num(r.get('Valor N.F.')),
+                 _fat_dist_fmt_num(r.get('Volume')),
+                 frete,
+                 _fat_dist_fmt_num(r.get('Frete Peso')),
+                 _fat_dist_fmt_num(r.get('ADValorem')),
+                 _fat_dist_fmt_num(r.get('Gris')),
+                 _fat_dist_fmt_num(r.get('Despacho')),
+                 _fat_dist_fmt_num(r.get('Valor ICMS')),
+                 _fat_dist_fmt_num(r.get('Outros'))],
+                fmt_moeda_cols=COLS_MOE,
+                fmt_extra={8: '#,##0', 9: '#,##0.000'},
+            )
+            cur_row  += 1
+            total_cc += frete
+        totais_cc[cc] = total_cc
+        _fat_dist_linha_total(ws, cur_row, f'TOTAL — {cc}', total_cc, N_COLS, COL_FRETE, COR)
+        cur_row += 2
+
+    total_geral = sum(totais_cc.values())
+    _fat_dist_linha_total(ws, cur_row, 'TOTAL GERAL', total_geral, N_COLS, COL_FRETE, '1A202C')
+    _fat_dist_ajusta_larguras(ws, [14, 30, 16, 12, 8, 12, 12, 10, 10, 10, 12, 12])
+
+
+# ── Aba 4 — Pint Pharma ───────────────────────────────────────────────────────
+
+def _fat_dist_aba_pint_pharma(wb, df, mes_ref):
+    COR = '7C3AED'
+
+    ws = wb.create_sheet('Pint Pharma')
+    ws.sheet_view.showGridLines = False
+
+    COLUNAS   = ['Pedido Cliente', 'Coleta', 'Número Referência', 'Destinatário',
+                 'Cidade', 'UF', 'Valor do Frete', 'Obs. Minuta']
+    N_COLS    = len(COLUNAS)
+    COL_FRETE = 7
+
+    _fat_dist_titulo_pagina(ws, f'PINT PHARMA — {mes_ref.upper()}', N_COLS)
+
+    mask   = df['Cliente Faturado'].str.upper().str.contains('PINT PHARMA', na=False)
+    linhas = df[mask]
+
+    cur_row = 3
+    cur_row = _fat_dist_cabecalho_doc(ws, cur_row, 'PINT PHARMA', None, N_COLS)
+    _fat_dist_cabecalho_linha(ws, cur_row, COLUNAS, COR)
+    cur_row += 1
+
+    total = 0.0
+    for _, r in linhas.iterrows():
+        frete = _fat_dist_fmt_num(r.get('Valor Frete'))
+        _fat_dist_linha_dados(
+            ws, cur_row,
+            [_fat_dist_str(r.get('Pedido Cliente')),
+             _fat_dist_fmt_data(r.get('Coleta')),
+             _fat_dist_str(r.get('Número Referência')),
+             _fat_dist_str(r.get('Destinatário')),
+             _fat_dist_str(r.get('Cidade Destinatário')),
+             _fat_dist_str(r.get('Estado Destino')),
+             frete,
+             _fat_dist_str(r.get('Obs. Minuta'))],
+            fmt_moeda_cols={COL_FRETE},
+        )
+        cur_row += 1
+        total   += frete
+
+    _fat_dist_bloco_iss(ws, cur_row, total, 'TOTAL', N_COLS, COL_FRETE, COR)
+    _fat_dist_ajusta_larguras(ws, [16, 14, 20, 38, 20, 8, 14, 50])
+
+
+# ── Aba 5 — Funcional ─────────────────────────────────────────────────────────
+
+def _fat_dist_aba_funcional(wb, df, mes_ref):
+    COR = '065F46'
+    ws  = wb.create_sheet('Funcional')
+    ws.sheet_view.showGridLines = False
+
+    COLUNAS = ['Centro de Custo', 'Coleta', 'Número Referência', 'Destinatário',
+               'Cidade', 'Nota Fiscal', 'Valor N.F.', 'Volume', 'Peso Taxado',
+               'Frete Peso', 'Seguro', 'Manuseio', 'ITR', 'Despacho',
+               'SEC/CAT', 'Taxa ICMS', 'Valor ICMS', 'Outros', 'Valor Frete']
+    N_COLS    = len(COLUNAS)
+    COL_FRETE = 19
+    COLS_MOE  = {7, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19}
+    COLS_VOL  = {8}    # Volume — inteiro
+    COLS_PESO = {9}    # Peso Taxado — 3 casas
+
+    _fat_dist_titulo_pagina(ws, f'FUNCIONAL — {mes_ref.upper()}', N_COLS)
+
+    mask   = df['Cliente Faturado'].str.upper().str.contains('FUNCIONAL HEALTH', na=False)
+    linhas = df[mask]
+
+    cur_row = 3
+
+    ccs = sorted(linhas['Centro de Custo'].fillna('(sem CC)').unique())
+    totais_cc = {}
+
+    for cc in ccs:
+        bloco    = linhas[linhas['Centro de Custo'].fillna('(sem CC)') == cc]
+        cur_row  = _fat_dist_cabecalho_doc(ws, cur_row, 'FUNCIONAL', cc, N_COLS)
+        _fat_dist_cabecalho_linha(ws, cur_row, COLUNAS, COR)
+        cur_row += 1
+        total_cc = 0.0
+        for _, r in bloco.iterrows():
+            frete = _fat_dist_fmt_num(r.get('Valor Frete'))
+            _fat_dist_linha_dados(
+                ws, cur_row,
+                [str(cc),
+                 _fat_dist_fmt_data(r.get('Coleta')),
+                 _fat_dist_str(r.get('Número Referência')),
+                 _fat_dist_str(r.get('Destinatário')),
+                 _fat_dist_str(r.get('Cidade Destinatário')),
+                 _fat_dist_str(r.get('Nota Fiscal')),
+                 _fat_dist_fmt_num(r.get('Valor N.F.')),
+                 _fat_dist_fmt_num(r.get('Volume')),
+                 _fat_dist_fmt_num(r.get('Peso Taxado')),
+                 _fat_dist_fmt_num(r.get('Frete Peso')),
+                 _fat_dist_fmt_num(r.get('ADValorem')),
+                 _fat_dist_fmt_num(r.get('Gris')),
+                 _fat_dist_fmt_num(r.get('ITR')),
+                 _fat_dist_fmt_num(r.get('Despacho')),
+                 _fat_dist_fmt_num(r.get('SEC/CAT')),
+                 _fat_dist_fmt_num(r.get('Taxa ICMS')),
+                 _fat_dist_fmt_num(r.get('Valor ICMS')),
+                 _fat_dist_fmt_num(r.get('Outros')),
+                 frete],
+                fmt_moeda_cols=COLS_MOE,
+                fmt_extra={8: '#,##0', 9: '#,##0.000'},
+            )
+            cur_row  += 1
+            total_cc += frete
+        totais_cc[cc] = total_cc
+        _fat_dist_linha_total(ws, cur_row, f'TOTAL — {cc}', total_cc, N_COLS, COL_FRETE, COR)
+        cur_row += 2
+
+    total_geral = sum(totais_cc.values())
+    _fat_dist_linha_total(ws, cur_row, 'TOTAL GERAL', total_geral, N_COLS, COL_FRETE, '1A202C')
+    _fat_dist_ajusta_larguras(ws, [30, 14, 20, 38, 18, 16, 12, 8, 10, 10, 10, 8,
+                                    8, 10, 10, 10, 12, 10, 12])
+
+
+# ── Wrapper principal ─────────────────────────────────────────────────────────
+
+def run_faturamento_distribuicao(arquivo_embarques, mes_ref, log, pasta_saida=None):
+    import re
+    from openpyxl import Workbook
+
+    log(f"📂 Lendo arquivo: {os.path.basename(arquivo_embarques)}\n")
+
+    try:
+        xl  = pd.ExcelFile(arquivo_embarques)
+        aba = next((s for s in xl.sheet_names
+                    if s.upper().startswith('EMBARQUES')), xl.sheet_names[0])
+        df  = pd.read_excel(arquivo_embarques, sheet_name=aba, dtype=str)
+        log(f"✅ Aba '{aba}' carregada — {len(df)} linhas.\n")
+    except Exception as e:
+        log(f"❌ Erro ao ler arquivo: {e}\n")
+        return None
+
+    cols_num = ['Valor Frete', 'Frete Peso', 'ADValorem', 'Gris', 'ITR',
+                'Despacho', 'SEC/CAT', 'Taxa ICMS', 'Valor ICMS', 'Outros',
+                'Valor N.F.', 'Volume', 'Peso Taxado']
+    for col in cols_num:
+        if col in df.columns:
+            df[col] = pd.to_numeric(
+                df[col].str.replace(',', '.', regex=False), errors='coerce').fillna(0.0)
+
+    df = df[df['Cliente Faturado'].notna() & (df['Cliente Faturado'].str.strip() != '')]
+    df = df[~df['Cliente Faturado'].str.upper().str.contains('BAIA 4', na=False)]
+    log(f"📊 {len(df)} linhas após filtro de clientes.\n")
+
+    wb = Workbook()
+    wb.remove(wb.active)
+
+    log("📝 Gerando aba Fechamento (capa)...\n")
+    _fat_dist_aba_fechamento(wb, df, mes_ref)
+
+    log("📝 Gerando aba Geral...\n")
+    _fat_dist_aba_geral(wb, df, mes_ref)
+
+    # Mapeamento de ISS por cliente:
+    # True  = todos os CCs têm ISS
+    # set   = apenas os CCs listados têm ISS
+    # None  = sem ISS (YELUM)
+    _ISS_MAP = {
+        'ADITUS':      True,
+        'BIOGEN':      {'MARKETING AF', 'MS MARKETING', 'SMA MARKETING'},
+        'CSL BEHRING': True,
+        'IPSEN':       True,
+        'YELUM':       None,
+    }
+    for rotulo in _CC_ORDEM:
+        substrings = _CC_CLIENTES[rotulo]
+        cc_iss     = _ISS_MAP.get(rotulo)
+        log(f"📝 Gerando aba {rotulo}...\n")
+        _fat_dist_aba_cliente_cc(wb, df, mes_ref, rotulo, substrings,
+                                  cc_com_iss=cc_iss)
+
+    log("📝 Gerando aba EPH - Astrazeneca...\n")
+    _fat_dist_aba_eph_astrazeneca(wb, df, mes_ref)
+
+    log("📝 Gerando aba EPH - MATRIZ...\n")
+    _fat_dist_aba_eph_matriz(wb, df, mes_ref)
+
+    log("📝 Gerando aba Pint Pharma...\n")
+    _fat_dist_aba_pint_pharma(wb, df, mes_ref)
+
+    log("📝 Gerando aba Funcional...\n")
+    _fat_dist_aba_funcional(wb, df, mes_ref)
+
+    ano_match = re.search(r'(\d{4})', mes_ref)
+    ano = ano_match.group(1) if ano_match else str(date.today().year)
+
+    base  = pasta_saida or PASTA_FINANCEIRO
+    pasta = os.path.join(base, ano)
+    os.makedirs(pasta, exist_ok=True)
+
+    mes_nome = mes_ref.replace('/', '_').replace(' ', '_')
+    saida    = os.path.join(pasta, f'Fat_Distribuicao_{mes_nome}.xlsx')
+
+    try:
+        wb.save(saida)
+        log(f"💾 Arquivo salvo: {saida}\n")
+    except Exception as e:
+        log(f"❌ Erro ao salvar: {e}\n")
+        return None
+
+    _registrar_extracao('Faturamento Distribuição')
+    log(f"✅ Relatório de Faturamento Distribuição gerado!\n")
+    return saida
+
+
+
 class App:
     def __init__(self, root):
         self.root        = root
@@ -5358,6 +6440,7 @@ class App:
             ('financeiro', '   🏠  Visão Geral'),
             ('contas',     '   💰  Contas'),
             ('fat_arm',    '   🏭  Fat. Armazenagem'),
+            ('fat_dist',   '   🚛  Fat. Distribuição'),
         ]:
             _btn_nav(key, label, is_sub=True, parent=frm_fin)
 
@@ -5410,6 +6493,7 @@ class App:
                 'financeiro':      self._pagina_financeiro,
                 'contas':          self._pagina_financeiro_contas,
                 'fat_arm':         self._pagina_fat_arm,
+                'fat_dist':        self._pagina_fat_dist,
                 'de_para':     self._pagina_de_para,
                 'config':      self._pagina_config,
             }[pagina]()
@@ -6927,6 +8011,9 @@ class App:
             ('🏭', 'Faturamento\nArmazenagem',
              'Pico m³ por cliente · SKUs na data do pico',
              COR_FAT_ARM, lambda: self._ir_para('fat_arm')),
+            ('🚛', 'Faturamento\nDistribuição',
+             'Geral · EPH · Pint Pharma · Funcional',
+             COR_FAT_DIST, lambda: self._ir_para('fat_dist')),
         ]
 
         for i in range(len(modulos)):
@@ -7287,6 +8374,111 @@ class App:
             threading.Thread(target=_t, daemon=True).start()
         btn.configure(command=_run)
 
+
+    # ----------------------------------------------------------
+    # FATURAMENTO DISTRIBUIÇÃO
+    # ----------------------------------------------------------
+    def _pagina_fat_dist(self):
+        self._cabecalho(
+            '🚛  Faturamento Distribuição',
+            'Geral · EPH Astrazeneca · EPH MATRIZ · Pint Pharma · Funcional',
+            COR_FAT_DIST)
+        self._separador()
+        c = self.frm_conteudo
+
+        tk.Label(
+            c,
+            text=('ℹ  Selecione o arquivo de Embarques exportado do ESL (aba EMBARQUES MM.AA).\n'
+                  '   O relatório gera 5 abas: Geral, EPH - Astrazeneca, EPH - MATRIZ,\n'
+                  '   Pint Pharma e Funcional.'),
+            font=('Segoe UI', 8), bg=COR_BG, fg=COR_TEXTO_SUB,
+            justify='left').pack(anchor='w', padx=32, pady=(8, 4))
+
+        frm_arq = tk.Frame(c, bg=COR_BG)
+        frm_arq.pack(fill='x', padx=32, pady=(4, 8))
+        tk.Label(frm_arq, text='📊  Arquivo de Embarques (Excel):',
+                 font=('Segoe UI', 8, 'bold'), bg=COR_BG,
+                 fg=COR_FAT_DIST).pack(anchor='w')
+        frm_inp = tk.Frame(frm_arq, bg=COR_BG)
+        frm_inp.pack(fill='x')
+        entry_arq = estilo_entry(frm_inp, width=60)
+        entry_arq.pack(side='left', ipady=5)
+
+        def _pick():
+            p = filedialog.askopenfilename(
+                title='Selecionar arquivo de Embarques',
+                filetypes=[('Excel', '*.xlsx *.xls'), ('Todos', '*.*')])
+            if p:
+                entry_arq.delete(0, tk.END)
+                entry_arq.insert(0, p)
+
+        def _limpar():
+            entry_arq.delete(0, tk.END)
+
+        tk.Button(frm_inp, text='📁', font=('Segoe UI', 11), bg=COR_CARD2,
+                  fg=COR_TEXTO, relief='flat', padx=8, pady=4,
+                  cursor='hand2', command=_pick).pack(side='left', padx=(6, 0))
+        btn_x = tk.Button(frm_inp, text='✕', font=('Segoe UI', 10), bg=COR_CARD2,
+                          fg=COR_TEXTO_SUB, relief='flat', padx=8, pady=4,
+                          cursor='hand2', command=_limpar)
+        btn_x.pack(side='left', padx=(4, 0))
+        btn_x.bind('<Enter>', lambda e: btn_x.config(fg=COR_ERRO))
+        btn_x.bind('<Leave>', lambda e: btn_x.config(fg=COR_TEXTO_SUB))
+
+        ultimo = _carregar_estado().get('ultimo_arquivo_embarques_dist', '')
+        if ultimo and os.path.isfile(ultimo):
+            entry_arq.insert(0, ultimo)
+
+        var_mes = _dropdown_mes(c, label='Mês de referência:', cor_label=COR_FAT_DIST)
+        tk.Label(c, text='ℹ  Saída: ' + PASTA_FINANCEIRO + '  >  AAAA  >  arquivo',
+                 font=('Segoe UI', 7), bg=COR_BG, fg=COR_TEXTO_SUB).pack(anchor='w', padx=32)
+
+        self._separador()
+        txt, btn = self._log_e_btn('Gerar Relatório', COR_FAT_DIST)
+
+        def _run():
+            arq = entry_arq.get().strip()
+            if not arq:
+                messagebox.showwarning('Atenção', 'Selecione o arquivo de Embarques.')
+                return
+            if not os.path.isfile(arq):
+                messagebox.showwarning('Atenção', 'Arquivo não encontrado.')
+                return
+            estado = _carregar_estado()
+            estado['ultimo_arquivo_embarques_dist'] = arq
+            _salvar_estado(estado)
+            mes_ref = var_mes.get()
+            txt.configure(state='normal')
+            txt.delete('1.0', tk.END)
+            txt.configure(state='disabled')
+            ts = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+            log_write(txt, "⏱ " + ts + "\n" + "─" * 52 + "\n")
+            btn.configure(state='disabled', text='⏳  Processando...')
+
+            def _t():
+                try:
+                    ok = run_faturamento_distribuicao(
+                        arq, mes_ref,
+                        lambda m: self.root.after(0, log_write, txt, m))
+                    self.root.after(0, lambda: btn.configure(
+                        state='normal', text='Gerar Relatório'))
+                    if ok:
+                        self.root.after(
+                            0, lambda: self._resumo_sucesso(
+                                'Faturamento Distribuição', ok, txt))
+                    else:
+                        self.root.after(
+                            0, messagebox.showerror, 'Erro', '❌ Verifique o log.')
+                except Exception as exc:
+                    msg = str(exc)
+                    self.root.after(0, lambda: btn.configure(
+                        state='normal', text='Gerar Relatório'))
+                    self.root.after(
+                        0, lambda m=msg: log_write(txt, "❌ Erro inesperado: " + m + "\n"))
+            threading.Thread(target=_t, daemon=True).start()
+
+        btn.configure(command=_run)
+
     # ----------------------------------------------------------
     # DE-PARA EDITOR
     # ----------------------------------------------------------
@@ -7415,7 +8607,7 @@ class App:
                 dp_editando[0][0].set('')
                 # foca entry
                 try: dp_editando[0][2].winfo_children()[0].focus_set()
-                except: pass
+                except Exception: pass
 
         tk.Button(frm_tb, text='➕ Adicionar', font=('Segoe UI', 8, 'bold'),
                   bg=COR_ACCENT4, fg='white', relief='flat', padx=10, pady=5,
