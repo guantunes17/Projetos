@@ -42,7 +42,13 @@ _fix_result.txt
 
 # Node / frontend
 node_modules/
+.next/
+.turbo/
 *.log
+
+# Local databases and artifacts
+*.db
+*.sqlite3
 
 # Códigos antigos (não versionar)
 Códigos antigos/
