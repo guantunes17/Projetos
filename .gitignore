@@ -40,5 +40,9 @@ _fix_encoding.py
 _encoding_result.txt
 _fix_result.txt
 
+# Node / frontend
+node_modules/
+*.log
+
 # Códigos antigos (não versionar)
 Códigos antigos/
