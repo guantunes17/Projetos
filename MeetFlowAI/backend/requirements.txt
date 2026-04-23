@@ -2,9 +2,11 @@ fastapi
 uvicorn[standard]
 python-multipart
 sqlalchemy
+alembic
 passlib[bcrypt]
 python-jose[cryptography]
 pydantic
+email-validator
 openai
 pyspellchecker
 httpx

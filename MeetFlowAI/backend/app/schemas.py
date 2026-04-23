@@ -1,10 +1,10 @@
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 
 
 class LoginRequest(BaseModel):
-    email: str
+    email: EmailStr
     password: str
 
 
@@ -37,3 +37,23 @@ class MeetingOut(BaseModel):
 
 class ChatRequest(BaseModel):
     question: str
+
+
+class RegisterRequest(BaseModel):
+    email: EmailStr
+    full_name: str
+    password: str
+
+
+class UserProfileOut(BaseModel):
+    email: EmailStr
+    full_name: str
+
+
+class UserProfileUpdate(BaseModel):
+    full_name: str
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str

@@ -23,6 +23,7 @@ function buildUrl(path) {
 function formatApiError(data) {
   if (!data) return "Falha no pedido";
   if (typeof data.detail === "string") return data.detail;
+  if (typeof data.detail === "object" && data.detail?.message) return data.detail.message;
   if (Array.isArray(data.detail)) {
     return data.detail
       .map((d) => (typeof d === "string" ? d : d.msg || JSON.stringify(d)))
@@ -48,7 +49,7 @@ async function request(path, options = {}, token = "") {
       throw err;
     }
     const tip =
-      "Não foi possível ligar ao backend. Confirme se o FastAPI está a correr (ex.: uvicorn em 0.0.0.0:8000) e, no navegador, use o proxy /__meetflow do Next em desenvolvimento.";
+      "Não foi possível conectar ao backend. Confirme se o FastAPI está em execução (ex.: uvicorn em 0.0.0.0:8000) e, no navegador, use o proxy /__meetflow do Next em desenvolvimento.";
     const netErr = new Error(err?.message ? `${err.message}. ${tip}` : tip);
     netErr.status = 0;
     throw netErr;
@@ -61,6 +62,10 @@ async function request(path, options = {}, token = "") {
   if (!response.ok) {
     const e = new Error(formatApiError(typeof data === "object" ? data : { detail: String(data) }));
     e.status = response.status;
+    const retryHeader = response.headers.get("retry-after");
+    const retryFromBody =
+      typeof data === "object" && typeof data?.detail === "object" ? Number(data.detail?.retry_after_seconds || 0) : 0;
+    e.retryAfterSeconds = Number(retryHeader || 0) || retryFromBody || 0;
     throw e;
   }
   return data;
@@ -73,6 +78,33 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
     }),
+  register: (payload) =>
+    request("/api/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }),
+  me: (token) => request("/api/me", {}, token),
+  updateMe: (payload, token) =>
+    request(
+      "/api/me",
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      },
+      token,
+    ),
+  changePassword: (payload, token) =>
+    request(
+      "/api/me/change-password",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      },
+      token,
+    ),
   dashboard: (token) => request("/api/dashboard", {}, token),
   meetings: (token) => request("/api/meetings", {}, token),
   meetingDetail: (id, token) => request(`/api/meetings/${id}`, {}, token),

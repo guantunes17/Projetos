@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Integer, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .database import Base
@@ -20,6 +20,7 @@ class Meeting(Base):
     __tablename__ = "meetings"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), index=True)
     title: Mapped[str] = mapped_column(Text, index=True)
     source_type: Mapped[str] = mapped_column(Text)  # upload, transcript, manual, live
     transcript_raw: Mapped[str] = mapped_column(Text, default="")

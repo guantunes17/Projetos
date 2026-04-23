@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, ListChecks, LogOut, MessageCircle, PlusCircle } from "lucide-react";
+import { LayoutDashboard, ListChecks, LogOut, MessageCircle, PlusCircle, Settings } from "lucide-react";
 
 import { useMeetFlow } from "@/components/meetflow/app-context";
 import { Badge } from "@/components/ui/badge";
@@ -14,11 +14,13 @@ const items = [
   { href: "/chat", label: "Assistente", icon: MessageCircle },
   { href: "/meetings/new", label: "Nova reunião", icon: PlusCircle },
   { href: "/meetings", label: "Reuniões", icon: ListChecks },
+  { href: "/account", label: "Conta", icon: Settings },
 ];
 
 export function AppShell({ children }) {
   const pathname = usePathname();
-  const { userName, meetings, logout, syncError, clearSyncError, refreshAll } = useMeetFlow();
+  const { userName, meetings, logout, syncError, clearSyncError, refreshAll, isSessionWarningVisible, sessionTimeLeftMs, extendSession } =
+    useMeetFlow();
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-950 to-slate-900 text-slate-100">
@@ -58,6 +60,14 @@ export function AppShell({ children }) {
           </Button>
         </aside>
         <main className="min-w-0 xl:py-1">
+          {isSessionWarningVisible ? (
+            <div className="mb-4 rounded-2xl border border-blue-500/40 bg-blue-950/30 px-4 py-3 text-sm text-blue-100">
+              Sua sessão expira em {Math.max(1, Math.ceil(sessionTimeLeftMs / 60000))} min por inatividade.
+              <button type="button" className="ml-2 text-lime-300 underline" onClick={extendSession}>
+                Continuar conectado
+              </button>
+            </div>
+          ) : null}
           {syncError ? (
             <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-amber-500/30 bg-amber-950/30 px-4 py-2.5 text-xs text-amber-100/90 sm:text-sm">
               <span className="pr-2">
