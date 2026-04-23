@@ -2,7 +2,8 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
-import { ChevronRight, MessageCircle } from "lucide-react";
+import { ChevronRight, MessageCircle, Sparkles } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
 
 import { MeetingChat } from "@/components/meetflow/meeting-chat";
 import { useMeetFlow } from "@/components/meetflow/app-context";
@@ -19,6 +20,7 @@ function ChatStudioContent() {
   const paramId = searchParams.get("meeting");
   const [selectedId, setSelectedId] = useState(null);
   const [q, setQ] = useState("");
+  const reduceMotion = useReducedMotion();
 
   useEffect(() => {
     if (paramId) {
@@ -41,10 +43,28 @@ function ChatStudioContent() {
     [router],
   );
 
+  const fadeInUp = (index = 0) => ({
+    initial: reduceMotion ? { opacity: 1, y: 0 } : { opacity: 0, y: 12 },
+    animate: { opacity: 1, y: 0 },
+    transition: reduceMotion ? { duration: 0 } : { delay: 0.04 * index, duration: 0.28, ease: "easeOut" },
+  });
+
   return (
     <div className="space-y-4">
+      <motion.div {...fadeInUp(0)}>
+        <Card className="border-blue-500/20 bg-slate-950/70">
+        <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">
+          <div className="flex items-center gap-2 text-sm text-slate-300">
+            <Sparkles className="h-4 w-4 text-lime-300" />
+            Assistente em modo de contexto: selecione uma reunião para respostas ancoradas.
+          </div>
+          <Badge variant="info">{meetings.length} reunião(ões) disponível(is)</Badge>
+        </CardContent>
+        </Card>
+      </motion.div>
       <div className="grid gap-6 lg:grid-cols-[minmax(200px,280px)_1fr]">
-        <Card className="h-fit max-h-[calc(100vh-8rem)]">
+        <motion.div {...fadeInUp(1)}>
+          <Card className="h-fit max-h-[calc(100vh-8rem)]">
           <CardHeader>
             <div className="flex items-center gap-2">
               <MessageCircle className="h-4 w-4 text-blue-300" />
@@ -61,17 +81,34 @@ function ChatStudioContent() {
             />
           </CardHeader>
           <CardContent className="max-h-72 space-y-1 overflow-y-auto p-2 pt-0">
-            {isLoading && meetings.length === 0 ? <p className="px-2 text-xs text-slate-500">Carregando…</p> : null}
+            {isLoading && meetings.length === 0 ? (
+              <div className="space-y-2 px-2 py-1">
+                {[0, 1, 2].map((i) => (
+                  <div
+                    key={i}
+                    className="h-10 animate-pulse rounded-lg border border-slate-800 bg-slate-900/70"
+                  />
+                ))}
+              </div>
+            ) : null}
             {!isLoading && meetings.length === 0 ? (
               <p className="px-2 text-sm text-slate-400">
                 Ainda não há reuniões. Processa áudio ou texto primeiro.
               </p>
             ) : null}
+            {!isLoading && meetings.length > 0 && filtered.length === 0 ? (
+              <p className="rounded-lg border border-dashed border-slate-700 px-3 py-2 text-xs text-slate-400">
+                Nenhuma reunião encontrada para esse filtro.
+              </p>
+            ) : null}
             {filtered.map((m) => (
-              <button
+              <motion.button
                 key={m.id}
                 type="button"
                 onClick={() => selectMeeting(m.id)}
+                initial={reduceMotion ? false : { opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={reduceMotion ? { duration: 0 } : { duration: 0.22 }}
                 className={cn(
                   "flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-left text-sm transition",
                   String(m.id) === String(selectedId)
@@ -81,10 +118,11 @@ function ChatStudioContent() {
               >
                 <span className="truncate font-medium">{m.title}</span>
                 <ChevronRight className="h-4 w-4 shrink-0 text-slate-500" />
-              </button>
+              </motion.button>
             ))}
           </CardContent>
-        </Card>
+          </Card>
+        </motion.div>
 
         <div className="min-w-0">
           {selectedId && selected ? (

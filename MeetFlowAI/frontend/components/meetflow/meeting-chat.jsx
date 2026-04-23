@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 const DEFAULT_SUGGESTIONS = [
   "Quais decisões foram tomadas e quem responde por cada ação?",
   "Que riscos, bloqueios ou dependências surgem na reunião?",
-  "Resume em 5 linhas o que a liderança precisa de saber hoje.",
+  "Resuma em 5 linhas o que a liderança precisa saber hoje.",
 ];
 
 /**

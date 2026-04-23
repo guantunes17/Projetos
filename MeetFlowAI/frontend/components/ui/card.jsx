@@ -1,7 +1,15 @@
 import { cn } from "@/lib/utils";
 
 export function Card({ className, ...props }) {
-  return <div className={cn("rounded-2xl border border-slate-800/80 bg-slate-900/70 backdrop-blur-sm", className)} {...props} />;
+  return (
+    <div
+      className={cn(
+        "rounded-2xl border border-slate-800/80 bg-slate-900/70 backdrop-blur-sm transition-all duration-200",
+        className,
+      )}
+      {...props}
+    />
+  );
 }
 
 export function CardHeader({ className, ...props }) {

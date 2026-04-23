@@ -38,7 +38,7 @@ export function AppShell({ children }) {
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-slate-300 transition hover:bg-slate-800",
+                    "flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-slate-300 transition-all duration-200 hover:bg-slate-800 motion-safe:hover:translate-x-0.5",
                     active && "bg-blue-500 text-white hover:bg-blue-500",
                   )}
                 >

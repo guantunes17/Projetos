@@ -51,8 +51,8 @@ export default function MeetingsPage() {
       <section className="grid gap-3">
         {filtered.map((meeting) => (
           <motion.div key={meeting.id} whileHover={{ y: -2 }} transition={{ duration: 0.16 }}>
-            <div className="flex items-stretch gap-2 rounded-2xl border border-slate-800 bg-slate-900/70 p-3 transition hover:border-blue-400">
-              <Link href={`/meetings/${meeting.id}`} className="min-w-0 flex-1 px-1">
+            <div className="flex items-stretch gap-2 rounded-2xl border border-slate-800 bg-slate-900/70 p-3 transition-all duration-200 hover:border-blue-400 hover:shadow-lg hover:shadow-blue-950/20">
+              <Link href={`/meetings/${meeting.id}`} className="min-w-0 flex-1 px-1 transition-transform duration-200 motion-safe:hover:translate-x-0.5">
                 <p className="font-semibold">{meeting.title}</p>
                 <p className="text-xs text-slate-400">
                   Fonte: {meeting.source_type} · Idioma: {meeting.detected_language}
@@ -63,7 +63,7 @@ export default function MeetingsPage() {
                 variant="ghost"
                 className="shrink-0 text-rose-300 hover:bg-rose-950/50"
                 disabled={deletingId === meeting.id}
-                title="Eliminar reunião"
+                title="Excluir reunião"
                 onClick={(e) => removeMeeting(e, meeting.id)}
               >
                 <Trash2 size={16} />

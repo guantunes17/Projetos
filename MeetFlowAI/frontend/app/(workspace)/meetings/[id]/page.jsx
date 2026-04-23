@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { MessageCircle, Trash2 } from "lucide-react";
+import { CalendarClock, MessageCircle, Trash2 } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
 
 import { MeetingChat } from "@/components/meetflow/meeting-chat";
 import { useMeetFlow } from "@/components/meetflow/app-context";
@@ -18,6 +19,7 @@ export default function MeetingDetailsPage() {
   const [meeting, setMeeting] = useState(null);
   const [loadError, setLoadError] = useState("");
   const [deleting, setDeleting] = useState(false);
+  const reduceMotion = useReducedMotion();
 
   useEffect(() => {
     if (!token || !id) return;
@@ -77,20 +79,41 @@ export default function MeetingDetailsPage() {
 
   if (!meeting) {
     return (
-      <Card>
+      <Card className="overflow-hidden">
         <CardHeader>
           <CardTitle>Carregando reunião…</CardTitle>
         </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="h-9 animate-pulse rounded-lg border border-slate-800 bg-slate-900/70" />
+          <div className="h-28 animate-pulse rounded-xl border border-slate-800 bg-slate-900/70" />
+          <div className="h-52 animate-pulse rounded-xl border border-slate-800 bg-slate-900/70" />
+        </CardContent>
       </Card>
     );
   }
 
+  const fadeInUp = (index = 0) => ({
+    initial: reduceMotion ? { opacity: 1, y: 0 } : { opacity: 0, y: 12 },
+    animate: { opacity: 1, y: 0 },
+    transition: reduceMotion ? { duration: 0 } : { delay: 0.05 * index, duration: 0.3, ease: "easeOut" },
+  });
+
   return (
     <div className="space-y-6">
-      <Card>
+      <motion.div {...fadeInUp(0)}>
+        <Card className="relative overflow-hidden border-blue-500/20 bg-slate-950/80">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_14%_18%,rgba(59,130,246,0.18),transparent_45%),radial-gradient(circle_at_85%_84%,rgba(132,204,22,0.15),transparent_40%)]" />
         <CardHeader>
-          <CardTitle>{meeting.title}</CardTitle>
-          <CardDescription>Idioma detectado: {meeting.detected_language}</CardDescription>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <CardTitle>{meeting.title}</CardTitle>
+              <CardDescription>Idioma detectado: {meeting.detected_language}</CardDescription>
+            </div>
+            <div className="hidden items-center gap-1 rounded-xl border border-slate-700/80 bg-slate-900/70 px-3 py-2 text-xs text-slate-300 sm:flex">
+              <CalendarClock className="h-3.5 w-3.5 text-blue-300" />
+              Contexto pronto para análise
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-2">
           <Button variant="default" onClick={() => router.push(`/chat?meeting=${meeting.id}`)}>
@@ -106,14 +129,21 @@ export default function MeetingDetailsPage() {
           <Button variant="secondary" onClick={() => exportMeeting("md")}>
             Exportar Markdown
           </Button>
-          <Button variant="secondary" onClick={removeMeeting} disabled={deleting} className="ml-auto text-rose-300">
+          <Button
+            variant="secondary"
+            onClick={removeMeeting}
+            disabled={deleting}
+            className="ml-auto border-rose-500/20 text-rose-300 hover:bg-rose-950/40"
+          >
             <Trash2 size={16} className="mr-1" />
             {deleting ? "Excluindo…" : "Excluir reunião"}
           </Button>
         </CardContent>
-      </Card>
+        </Card>
+      </motion.div>
 
-      <Tabs defaultValue="ata">
+      <motion.div {...fadeInUp(1)}>
+        <Tabs defaultValue="ata">
         <TabsList className="flex w-full flex-wrap">
           <TabsTrigger value="ata">Ata</TabsTrigger>
           <TabsTrigger value="resumo">Resumo</TabsTrigger>
@@ -140,7 +170,8 @@ export default function MeetingDetailsPage() {
         <TabsContent value="chat" className="mt-4">
           <MeetingChat meetingId={meeting.id} token={token} meetingTitle={meeting.title} />
         </TabsContent>
-      </Tabs>
+        </Tabs>
+      </motion.div>
     </div>
   );
 }

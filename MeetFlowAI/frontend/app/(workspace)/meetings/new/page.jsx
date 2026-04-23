@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Mic, Square, Upload } from "lucide-react";
+import { AudioLines, Mic, Square, Upload } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -44,6 +44,7 @@ export default function NewMeetingPage() {
   const router = useRouter();
 
   const progress = useMemo(() => (currentStep < 0 ? 0 : ((currentStep + 1) / steps.length) * 100), [currentStep]);
+  const currentStepLabel = currentStep >= 0 ? steps[currentStep] : "Aguardando início";
 
   function cancelPipeline() {
     abortRef.current?.abort();
@@ -129,12 +130,18 @@ export default function NewMeetingPage() {
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Nova reunião</CardTitle>
-          <CardDescription>Escolha a fonte e deixe a IA produzir as análises em minutos.</CardDescription>
+      <Card className="relative overflow-hidden border-blue-500/25 bg-slate-950/80">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_16%_18%,rgba(59,130,246,0.2),transparent_45%),radial-gradient(circle_at_84%_80%,rgba(132,204,22,0.16),transparent_40%)]" />
+        <CardHeader className="relative z-10">
+          <div className="flex items-center gap-2">
+            <AudioLines className="h-4 w-4 text-blue-300" />
+            <CardTitle>Nova reunião</CardTitle>
+          </div>
+          <CardDescription>
+            Escolha a fonte de entrada e deixe a IA gerar ata, resumo, tarefas e riscos em poucos minutos.
+          </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="relative z-10 space-y-4">
           <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Título da reunião" />
           <div className="grid gap-4 md:grid-cols-2">
             <Textarea
@@ -148,7 +155,7 @@ export default function NewMeetingPage() {
               <Input type="file" className="mt-3" onChange={(e) => setFile(e.target.files?.[0] || null)} />
             </label>
           </div>
-          <p className="text-xs text-slate-500">
+          <p className="rounded-xl border border-slate-700/80 bg-slate-900/60 px-3 py-2 text-xs text-slate-400">
             A gravação no navegador usa o <strong className="text-slate-300">microfone</strong> do dispositivo (ou
             headset/fone). Não captura o áudio interno do sistema (ex.: som de videochamada) — isso exigiria um app
             desktop ou extensão com captura em loopback.
@@ -178,17 +185,21 @@ export default function NewMeetingPage() {
               </Button>
             ) : null}
           </div>
-          {error ? <p className="text-sm text-rose-300">{error}</p> : null}
+          {error ? <p className="rounded-lg bg-rose-500/10 px-3 py-2 text-sm text-rose-300">{error}</p> : null}
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
           <CardTitle>Pipeline</CardTitle>
-          <CardDescription>Status visual das etapas de processamento.</CardDescription>
+          <CardDescription>Status visual das etapas de processamento em tempo real.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <Progress value={progress} />
+          <div className="flex items-center justify-between rounded-xl border border-slate-700/70 bg-slate-900/60 px-3 py-2 text-xs">
+            <span className="text-slate-400">Etapa atual</span>
+            <span className="font-medium text-blue-200">{currentStepLabel}</span>
+          </div>
           <div className="flex flex-wrap gap-2">
             {steps.map((step, index) => (
               <motion.div key={step} animate={{ scale: currentStep === index ? 1.03 : 1 }} transition={{ duration: 0.2 }}>
