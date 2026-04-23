@@ -129,7 +129,7 @@ export default function NewMeetingPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 xl:space-y-7">
       <Card className="relative overflow-hidden border-blue-500/25 bg-slate-950/80">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_16%_18%,rgba(59,130,246,0.2),transparent_45%),radial-gradient(circle_at_84%_80%,rgba(132,204,22,0.16),transparent_40%)]" />
         <CardHeader className="relative z-10">
@@ -143,14 +143,14 @@ export default function NewMeetingPage() {
         </CardHeader>
         <CardContent className="relative z-10 space-y-4">
           <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Título da reunião" />
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 xl:gap-5 md:grid-cols-2">
             <Textarea
               value={transcript}
               onChange={(e) => setTranscript(e.target.value)}
-              className="min-h-52"
+              className="min-h-52 xl:min-h-72"
               placeholder="Cole aqui a transcrição ou o texto da reunião"
             />
-            <label className="rounded-xl border border-dashed border-slate-700 p-4 text-sm text-slate-400">
+            <label className="rounded-xl border border-dashed border-slate-700 p-4 text-sm text-slate-400 xl:p-5">
               Upload de áudio/vídeo (mp3, m4a, wav, mp4)
               <Input type="file" className="mt-3" onChange={(e) => setFile(e.target.files?.[0] || null)} />
             </label>

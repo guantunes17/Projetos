@@ -22,8 +22,8 @@ export function AppShell({ children }) {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-950 to-slate-900 text-slate-100">
-      <div className="mx-auto grid min-h-screen max-w-7xl grid-cols-1 gap-6 px-4 py-6 lg:grid-cols-[260px_1fr]">
-        <aside className="rounded-3xl border border-slate-800 bg-slate-900/80 p-4 backdrop-blur">
+      <div className="mx-auto grid min-h-screen max-w-[1500px] grid-cols-1 gap-6 px-4 py-6 xl:grid-cols-[300px_1fr] xl:gap-8 xl:px-6">
+        <aside className="rounded-3xl border border-slate-800 bg-slate-900/80 p-4 backdrop-blur xl:sticky xl:top-6 xl:max-h-[calc(100vh-3rem)] xl:overflow-y-auto xl:p-5">
           <div className="mb-6 space-y-2">
             <p className="text-lg font-semibold">MeetFlow AI</p>
             <Badge variant="info">Workspace privado</Badge>
@@ -57,7 +57,7 @@ export function AppShell({ children }) {
             Sair
           </Button>
         </aside>
-        <main className="min-w-0">
+        <main className="min-w-0 xl:py-1">
           {syncError ? (
             <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-amber-500/30 bg-amber-950/30 px-4 py-2.5 text-xs text-amber-100/90 sm:text-sm">
               <span className="pr-2">

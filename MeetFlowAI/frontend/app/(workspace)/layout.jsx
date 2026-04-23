@@ -15,7 +15,7 @@ export default function WorkspaceLayout({ children }) {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.25, ease: "easeOut" }}
-            className="h-full"
+            className="h-full xl:mx-auto xl:w-full xl:max-w-[1120px]"
           >
             {children}
           </motion.div>

@@ -9,6 +9,7 @@ import { useMeetFlow } from "@/components/meetflow/app-context";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { fadeInUp, MOTION } from "@/lib/motion";
 
 export default function DashboardPage() {
   const { dashboard, meetings, refreshAll, token, isLoading } = useMeetFlow();
@@ -17,12 +18,6 @@ export default function DashboardPage() {
   useEffect(() => {
     if (token) refreshAll();
   }, [token]);
-
-  const fadeInUp = (index = 0) => ({
-    initial: reduceMotion ? { opacity: 1, y: 0 } : { opacity: 0, y: 18 },
-    animate: { opacity: 1, y: 0 },
-    transition: reduceMotion ? { duration: 0 } : { delay: 0.06 * index, duration: 0.4, ease: "easeOut" },
-  });
 
   const metrics = [
     {
@@ -49,8 +44,8 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div className="space-y-6">
-      <motion.section {...fadeInUp(0)}>
+    <div className="space-y-6 xl:space-y-7">
+      <motion.section {...fadeInUp(0, reduceMotion, { y: 18, baseDelay: 0.06, duration: MOTION.duration.slow })}>
         <Card className="relative overflow-hidden border-blue-500/30 bg-slate-950/80">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_18%,rgba(59,130,246,0.24),transparent_45%),radial-gradient(circle_at_84%_84%,rgba(132,204,22,0.2),transparent_40%)]" />
           <CardHeader className="relative z-10 space-y-3">
@@ -80,16 +75,16 @@ export default function DashboardPage() {
         </Card>
       </motion.section>
 
-      <section className="grid gap-4 md:grid-cols-3">
+      <section className="grid gap-4 xl:gap-5 md:grid-cols-3">
         {metrics.map((item, idx) => (
-          <motion.div key={item.title} {...fadeInUp(idx + 1)}>
+          <motion.div key={item.title} {...fadeInUp(idx + 1, reduceMotion, { y: 18, baseDelay: 0.06, duration: MOTION.duration.slow })}>
             <MetricCard item={item} />
           </motion.div>
         ))}
       </section>
 
-      <motion.section {...fadeInUp(4)}>
-        <Card className="overflow-hidden">
+      <motion.section {...fadeInUp(4, reduceMotion, { y: 18, baseDelay: 0.06, duration: MOTION.duration.slow })}>
+        <Card className="overflow-hidden xl:min-h-[360px]">
           <CardHeader className="border-b border-slate-800/80 bg-slate-900/40">
             <CardTitle>Últimas reuniões</CardTitle>
             <CardDescription>

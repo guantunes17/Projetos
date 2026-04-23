@@ -37,7 +37,7 @@ export default function MeetingsPage() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 xl:space-y-7">
       <Card>
         <CardHeader>
           <CardTitle>Histórico de reuniões</CardTitle>
@@ -48,7 +48,7 @@ export default function MeetingsPage() {
         </CardContent>
       </Card>
 
-      <section className="grid gap-3">
+      <section className="grid gap-3 xl:gap-4">
         {filtered.map((meeting) => (
           <motion.div key={meeting.id} whileHover={{ y: -2 }} transition={{ duration: 0.16 }}>
             <div className="flex items-stretch gap-2 rounded-2xl border border-slate-800 bg-slate-900/70 p-3 transition-all duration-200 hover:border-blue-400 hover:shadow-lg hover:shadow-blue-950/20">
