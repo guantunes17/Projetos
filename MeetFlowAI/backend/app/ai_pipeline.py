@@ -7,10 +7,10 @@ from openai import OpenAI
 
 from .text_preprocess import preprocess_transcript
 
-# Instrução reutilizada: saídas em português europeu com ortografia correta
+# Instrução reutilizada: saídas em português do Brasil com ortografia correta
 ORTOGRAFIA_PT = (
-    "Redige sempre em português europeu (Portugal), com acentuação e ortografia corretas "
-    "(incluindo ã, õ, ç, acentos agudos e circunflexos onde apropriado). Não uses grafia sem acentos."
+    "Escreva sempre em português do Brasil (pt-BR), com acentuação e ortografia corretas "
+    "(incluindo ã, õ, ç e acentos quando apropriado). Não use grafia sem acentos."
 )
 
 
@@ -52,16 +52,16 @@ def fallback_structuring(title: str, transcript: str, language: str) -> dict:
         "ata_formal": (
             f"Ata da reunião: {title}\n"
             f"Data: {datetime.now().strftime('%d/%m/%Y %H:%M')}\n"
-            f"Idioma detetado: {language}\n"
-            "Participantes detetados: Não identificados automaticamente.\n\n"
+            f"Idioma detectado: {language}\n"
+            "Participantes detectados: Não identificados automaticamente.\n\n"
             "Temas discutidos:\n- " + "\n- ".join(bullet_chunks[:5]) + "\n\n"
             "Pendências e próximos passos:\n- "
             + ("\n- ".join(bullet_chunks[5:8]) if len(bullet_chunks) > 5 else "Não identificados.")
         ),
         "resumo_executivo": " ".join(bullet_chunks[:5]) or "Resumo não disponível.",
-        "tarefas": tasks or [{"task": "Sem tarefas claras detetadas", "owner": "—", "deadline": "—"}],
-        "decisoes": decisions[:8] or ["Sem decisões explícitas detetadas."],
-        "riscos": risks[:8] or ["Nenhum risco explícito detetado."],
+        "tarefas": tasks or [{"task": "Sem tarefas claras detectadas", "owner": "—", "deadline": "—"}],
+        "decisoes": decisions[:8] or ["Sem decisões explícitas detectadas."],
+        "riscos": risks[:8] or ["Nenhum risco explícito detectado."],
         "speakers": ["Participante 1", "Participante 2"],
     }
 
@@ -74,8 +74,8 @@ def structure_meeting(title: str, transcript: str, language: str) -> dict:
 
     client = OpenAI(api_key=api_key)
     prompt = f"""{ORTOGRAFIA_PT}
-És um assistente de reuniões. Analisa a transcrição e devolve JSON válido.
-Todos os textos no JSON devem seguir a ortografia em português europeu (com acentos).
+És um assistente de reuniões. Analise a transcrição e devolva JSON válido.
+Todos os textos no JSON devem seguir a ortografia em português do Brasil (com acentos).
 
 Formato esperado:
 {{
@@ -88,7 +88,7 @@ Formato esperado:
 }}
 
 Título: {title}
-Idioma detetado: {language}
+Idioma detectado: {language}
 Transcrição:
 {transcript}
 """
@@ -118,7 +118,7 @@ def _default_suggested_questions() -> list[str]:
     return [
         "Quais foram as principais decisões e quem ficou responsável por cada entrega?",
         "Existem riscos, bloqueios ou dependências citadas na conversa?",
-        "Resume em cinco linhas o que o cliente ou a liderança precisa de saber.",
+        "Resuma em cinco linhas o que o cliente ou a liderança precisa saber.",
     ]
 
 
@@ -144,14 +144,14 @@ def chat_with_meeting(question: str, meeting: dict) -> dict:
     client = OpenAI(api_key=api_key)
     system = (
         f"{ORTOGRAFIA_PT} "
-        "És um assistente de análise de reuniões, no estilo NotebookLM: claro, profissional, útil. "
-        "Usa apenas o contexto fornecido. Se não houver informação suficiente, diz-o explicitamente. "
-        "Podes usar markdown leve (títulos ##, listas) quando ajudar a leitura. "
-        "O campo answer e as suggested_questions devem estar em português europeu, com acentos corretos. "
+        "Você é um assistente de análise de reuniões, no estilo NotebookLM: claro, profissional e útil. "
+        "Use apenas o contexto fornecido. Se não houver informação suficiente, diga isso explicitamente. "
+        "Você pode usar markdown leve (títulos ##, listas) quando ajudar a leitura. "
+        "O campo answer e as suggested_questions devem estar em português do Brasil, com acentos corretos. "
         "O JSON de resposta deve conter 3 sugestões curtas de acompanhamento (perguntas de follow-up) em português."
     )
     user = (
-        f"Contexto da reunião:\n{context}\n\nPergunta do utilizador:\n{question}\n\n"
+        f"Contexto da reunião:\n{context}\n\nPergunta do usuário:\n{question}\n\n"
         "Responde em JSON válido, exatamente no formato: "
         '{"answer": "texto em markdown", "suggested_questions": ["pergunta1", "pergunta2", "pergunta3"]}'
     )

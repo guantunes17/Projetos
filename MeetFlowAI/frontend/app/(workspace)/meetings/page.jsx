@@ -19,7 +19,7 @@ export default function MeetingsPage() {
   async function removeMeeting(e, id) {
     e.preventDefault();
     e.stopPropagation();
-    if (!window.confirm("Eliminar esta reunião e o conteúdo gerado?")) return;
+    if (!window.confirm("Excluir esta reunião e o conteúdo gerado?")) return;
     setDeletingId(id);
     try {
       await api.deleteMeeting(id, token);
@@ -51,7 +51,7 @@ export default function MeetingsPage() {
       <section className="grid gap-3">
         {filtered.map((meeting) => (
           <motion.div key={meeting.id} whileHover={{ y: -2 }} transition={{ duration: 0.16 }}>
-            <div className="flex items-stretch gap-2 rounded-2xl border border-slate-800 bg-slate-900/70 p-3 transition hover:border-indigo-400">
+            <div className="flex items-stretch gap-2 rounded-2xl border border-slate-800 bg-slate-900/70 p-3 transition hover:border-blue-400">
               <Link href={`/meetings/${meeting.id}`} className="min-w-0 flex-1 px-1">
                 <p className="font-semibold">{meeting.title}</p>
                 <p className="text-xs text-slate-400">

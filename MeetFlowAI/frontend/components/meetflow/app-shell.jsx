@@ -39,7 +39,7 @@ export function AppShell({ children }) {
                   href={item.href}
                   className={cn(
                     "flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-slate-300 transition hover:bg-slate-800",
-                    active && "bg-indigo-500 text-white hover:bg-indigo-500",
+                    active && "bg-blue-500 text-white hover:bg-blue-500",
                   )}
                 >
                   <Icon size={16} />
@@ -61,8 +61,8 @@ export function AppShell({ children }) {
           {syncError ? (
             <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-amber-500/30 bg-amber-950/30 px-4 py-2.5 text-xs text-amber-100/90 sm:text-sm">
               <span className="pr-2">
-                Sem ligação ao servidor. O teu histórico não é apagado.{" "}
-                <button type="button" className="text-indigo-300 underline" onClick={() => refreshAll()}>
+                Sem conexão com o servidor. Seu histórico não é apagado.{" "}
+                <button type="button" className="text-blue-300 underline" onClick={() => refreshAll()}>
                   Sincronizar
                 </button>{" "}
                 ou

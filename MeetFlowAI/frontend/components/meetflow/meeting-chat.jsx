@@ -10,7 +10,7 @@ import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 const DEFAULT_SUGGESTIONS = [
-  "Que decisões foram tomadas e quem responde por cada ação?",
+  "Quais decisões foram tomadas e quem responde por cada ação?",
   "Que riscos, bloqueios ou dependências surgem na reunião?",
   "Resume em 5 linhas o que a liderança precisa de saber hoje.",
 ];
@@ -85,13 +85,13 @@ export function MeetingChat({ meetingId, token, meetingTitle, className }) {
   return (
     <div
       className={cn(
-        "flex h-[min(70vh,680px)] flex-col overflow-hidden rounded-3xl border border-slate-700/60 bg-slate-950/40 shadow-2xl shadow-indigo-950/20 ring-1 ring-white/5 backdrop-blur-sm",
+        "flex h-[min(70vh,680px)] flex-col overflow-hidden rounded-3xl border border-slate-700/60 bg-slate-950/40 shadow-2xl shadow-blue-950/20 ring-1 ring-white/5 backdrop-blur-sm",
         className,
       )}
     >
       <div className="border-b border-slate-800/80 bg-gradient-to-r from-slate-900/90 to-slate-950/90 px-5 py-4">
         <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-500/20 text-indigo-200">
+          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-500/20 text-blue-200">
             <MessageCircle className="h-5 w-5" />
           </div>
           <div>
@@ -101,7 +101,7 @@ export function MeetingChat({ meetingId, token, meetingTitle, className }) {
             ) : null}
             <p className="mt-1 text-xs leading-relaxed text-slate-500">
               Perguntas e respostas com base na transcrição, na ata e no resumo processados. Leitura objetiva, sem
-              inventar factos.
+              inventar fatos.
             </p>
           </div>
         </div>
@@ -111,9 +111,9 @@ export function MeetingChat({ meetingId, token, meetingTitle, className }) {
         {messages.length === 0 ? (
           <div className="mx-auto max-w-md rounded-2xl border border-dashed border-slate-700/80 bg-slate-900/30 p-5 text-center">
             <Sparkles className="mx-auto mb-2 h-6 w-6 text-amber-200/80" />
-            <p className="text-sm text-slate-300">Começa com uma pergunta ou usa as sugestões abaixo.</p>
+            <p className="text-sm text-slate-300">Comece com uma pergunta ou use as sugestões abaixo.</p>
             <p className="mt-2 text-xs text-slate-500">
-              Dica: podes pedir resumos, responsáveis, riscos ou citações do contexto.
+              Dica: você pode pedir resumos, responsáveis, riscos ou citações do contexto.
             </p>
           </div>
         ) : null}
@@ -125,7 +125,7 @@ export function MeetingChat({ meetingId, token, meetingTitle, className }) {
             <div
               className={cn(
                 "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
-                msg.role === "user" ? "bg-indigo-500/30 text-indigo-200" : "bg-emerald-500/15 text-emerald-200",
+                msg.role === "user" ? "bg-blue-500/30 text-blue-200" : "bg-lime-500/15 text-lime-200",
               )}
             >
               {msg.role === "user" ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
@@ -134,7 +134,7 @@ export function MeetingChat({ meetingId, token, meetingTitle, className }) {
               className={cn(
                 "max-w-[min(100%,32rem)] rounded-2xl px-4 py-3 text-sm shadow-sm",
                 msg.role === "user"
-                  ? "bg-indigo-600/30 text-slate-50"
+                  ? "bg-blue-600/30 text-slate-50"
                   : "border border-slate-700/60 bg-slate-900/80",
               )}
             >
@@ -160,10 +160,10 @@ export function MeetingChat({ meetingId, token, meetingTitle, className }) {
         ))}
         {loading ? (
           <div className="flex items-center gap-2 pl-10 text-xs text-slate-500">
-            <span className="inline-block h-2 w-2 animate-bounce rounded-full bg-indigo-400" />
-            <span className="inline-block h-2 w-2 animate-bounce rounded-full bg-indigo-400 [animation-delay:0.1s]" />
-            <span className="inline-block h-2 w-2 animate-bounce rounded-full bg-indigo-400 [animation-delay:0.2s]" />
-            <span>A pensar com base no teu conteúdo…</span>
+            <span className="inline-block h-2 w-2 animate-bounce rounded-full bg-blue-400" />
+            <span className="inline-block h-2 w-2 animate-bounce rounded-full bg-blue-400 [animation-delay:0.1s]" />
+            <span className="inline-block h-2 w-2 animate-bounce rounded-full bg-blue-400 [animation-delay:0.2s]" />
+            <span>Pensando com base no seu conteúdo…</span>
           </div>
         ) : null}
         <div ref={bottomRef} />
@@ -179,11 +179,11 @@ export function MeetingChat({ meetingId, token, meetingTitle, className }) {
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="h-auto max-w-full rounded-full border border-slate-700/80 bg-slate-900/50 px-3 py-1.5 text-left text-xs text-slate-300 hover:border-indigo-500/50 hover:bg-slate-800/80"
+                className="h-auto max-w-full rounded-full border border-slate-700/80 bg-slate-900/50 px-3 py-1.5 text-left text-xs text-slate-300 hover:border-blue-500/50 hover:bg-slate-800/80"
                 disabled={loading}
                 onClick={() => send(s)}
               >
-                <Sparkles className="mr-1.5 h-3 w-3 shrink-0 text-amber-300" />
+                <Sparkles className="mr-1.5 h-3 w-3 shrink-0 text-lime-300" />
                 <span className="whitespace-normal">{s}</span>
               </Button>
             ))}
@@ -198,7 +198,7 @@ export function MeetingChat({ meetingId, token, meetingTitle, className }) {
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Escreve a tua pergunta… (Enter envia; Shift+Enter — no MVP, só uma linha)"
+            placeholder="Escreva sua pergunta… (Enter envia; Shift+Enter — no MVP, só uma linha)"
             className="min-h-11"
             disabled={loading}
             onKeyDown={(e) => {

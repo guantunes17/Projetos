@@ -53,7 +53,7 @@ def get_current_user(authorization: str = Header(default="")) -> User:
     db = next(get_db())
     user = db.query(User).filter(User.email == email).first()
     if not user:
-        raise HTTPException(status_code=401, detail="Utilizador não encontrado.")
+        raise HTTPException(status_code=401, detail="Usuário não encontrado.")
     return user
 
 
@@ -138,7 +138,7 @@ def process_text(payload: MeetingCreateText, _: User = Depends(get_current_user)
             detail="A transcrição não pode estar vazia. Cole o texto ou use carregamento/gravação.",
         )
     if not (payload.title or "").strip():
-        raise HTTPException(status_code=422, detail="Indique um título para a reunião.")
+        raise HTTPException(status_code=422, detail="Informe um título para a reunião.")
     language = detect_language(clean)
     structured = structure_meeting(payload.title, clean, language)
 
@@ -174,10 +174,10 @@ async def process_upload(
     if not clean:
         raise HTTPException(
             status_code=422,
-            detail="Não foi possível obter texto a partir do ficheiro. Verifique o áudio, o formato ou indique transcrição manual.",
+            detail="Não foi possível obter texto a partir do arquivo. Verifique o áudio, o formato ou informe transcrição manual.",
         )
     if not (title or "").strip():
-        raise HTTPException(status_code=422, detail="Indique um título para a reunião.")
+        raise HTTPException(status_code=422, detail="Informe um título para a reunião.")
     language = detect_language(clean)
     structured = structure_meeting(title, clean, language)
 

@@ -34,7 +34,7 @@ export function AuthGate({ children }) {
       <Card className="w-full max-w-xl">
         <CardHeader>
           <CardTitle>MeetFlow AI</CardTitle>
-          <CardDescription>Inicie sessão para aceder ao workspace privado de reuniões.</CardDescription>
+          <CardDescription>Faça login para acessar o workspace privado de reuniões.</CardDescription>
         </CardHeader>
         <CardContent>
           <form className="space-y-3" onSubmit={handleSubmit}>

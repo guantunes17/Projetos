@@ -47,11 +47,11 @@ function ChatStudioContent() {
         <Card className="h-fit max-h-[calc(100vh-8rem)]">
           <CardHeader>
             <div className="flex items-center gap-2">
-              <MessageCircle className="h-4 w-4 text-indigo-300" />
+              <MessageCircle className="h-4 w-4 text-blue-300" />
               <CardTitle className="text-base">Contexto</CardTitle>
             </div>
             <CardDescription>
-              Escolhe uma reunião processada. O assistente lê só o que já foi analisado.
+              Escolha uma reunião processada. O assistente lê apenas o que já foi analisado.
             </CardDescription>
             <Input
               value={q}
@@ -61,7 +61,7 @@ function ChatStudioContent() {
             />
           </CardHeader>
           <CardContent className="max-h-72 space-y-1 overflow-y-auto p-2 pt-0">
-            {isLoading && meetings.length === 0 ? <p className="px-2 text-xs text-slate-500">A carregar…</p> : null}
+            {isLoading && meetings.length === 0 ? <p className="px-2 text-xs text-slate-500">Carregando…</p> : null}
             {!isLoading && meetings.length === 0 ? (
               <p className="px-2 text-sm text-slate-400">
                 Ainda não há reuniões. Processa áudio ou texto primeiro.
@@ -75,7 +75,7 @@ function ChatStudioContent() {
                 className={cn(
                   "flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-left text-sm transition",
                   String(m.id) === String(selectedId)
-                    ? "bg-indigo-500/25 text-white ring-1 ring-indigo-400/50"
+                    ? "bg-blue-500/25 text-white ring-1 ring-blue-400/50"
                     : "text-slate-300 hover:bg-slate-800/80",
                 )}
               >
@@ -96,10 +96,10 @@ function ChatStudioContent() {
                   Assistente
                 </Badge>
                 <div>
-                  <p className="text-lg font-medium text-slate-200">Escolhe uma reunião</p>
+                  <p className="text-lg font-medium text-slate-200">Escolha uma reunião</p>
                   <p className="mt-1 max-w-md text-sm text-slate-500">
-                    O chat está sempre disponível no menu <strong>Assistente</strong> — não é preciso estares na página
-                    da reunião. Escolhe um contexto na lista ou cria conteúdo novo.
+                    O chat está sempre disponível no menu <strong>Assistente</strong> — não é preciso estar na página da
+                    reunião. Escolha um contexto na lista ou crie conteúdo novo.
                   </p>
                 </div>
                 <div className="flex flex-wrap justify-center gap-2">

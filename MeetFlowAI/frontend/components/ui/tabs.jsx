@@ -21,7 +21,7 @@ export function TabsTrigger({ className, ...props }) {
   return (
     <TabsPrimitive.Trigger
       className={cn(
-        "inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-sm transition data-[state=active]:bg-indigo-500 data-[state=active]:text-white",
+        "inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-sm transition data-[state=active]:bg-blue-500 data-[state=active]:text-white",
         className,
       )}
       {...props}

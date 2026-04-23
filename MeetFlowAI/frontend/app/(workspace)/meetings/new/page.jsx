@@ -81,11 +81,11 @@ export default function NewMeetingPage() {
 
   function processText() {
     if (!title.trim()) {
-      setError("Indique o título da reunião.");
+      setError("Informe o título da reunião.");
       return;
     }
     if (!transcript.trim()) {
-      setError("Cole a transcrição (texto) ou use carregamento / gravação. Não é possível gerar a ata com o campo vazio.");
+      setError("Cole a transcrição (texto) ou use upload / gravação. Não é possível gerar a ata com o campo vazio.");
       return;
     }
     return runPipeline((signal) => api.processText({ title, transcript, source_type: "manual" }, token, signal));
@@ -93,11 +93,11 @@ export default function NewMeetingPage() {
 
   function processUpload() {
     if (!title.trim()) {
-      setError("Indique o título da reunião.");
+      setError("Informe o título da reunião.");
       return;
     }
     if (!file) {
-      setError("Selecione um ficheiro de áudio ou vídeo antes de processar.");
+      setError("Selecione um arquivo de áudio ou vídeo antes de processar.");
       return;
     }
     const form = new FormData();
@@ -144,14 +144,14 @@ export default function NewMeetingPage() {
               placeholder="Cole aqui a transcrição ou o texto da reunião"
             />
             <label className="rounded-xl border border-dashed border-slate-700 p-4 text-sm text-slate-400">
-              Carregamento de áudio/vídeo (mp3, m4a, wav, mp4)
+              Upload de áudio/vídeo (mp3, m4a, wav, mp4)
               <Input type="file" className="mt-3" onChange={(e) => setFile(e.target.files?.[0] || null)} />
             </label>
           </div>
           <p className="text-xs text-slate-500">
             A gravação no navegador usa o <strong className="text-slate-300">microfone</strong> do dispositivo (ou
-            auscultadores). Não regista o áudio interno do sistema (p. ex., o som de uma videochamada) — isso
-            exigiria uma aplicação de secretária ou extensão com captura em loopback.
+            headset/fone). Não captura o áudio interno do sistema (ex.: som de videochamada) — isso exigiria um app
+            desktop ou extensão com captura em loopback.
           </p>
           <div className="flex flex-wrap gap-2">
             <Button onClick={processText} disabled={processing}>
@@ -159,7 +159,7 @@ export default function NewMeetingPage() {
             </Button>
             <Button onClick={processUpload} variant="success" disabled={processing}>
               <Upload size={15} className="mr-2" />
-              Processar ficheiro
+              Processar arquivo
             </Button>
             {!isRecording ? (
               <Button onClick={startRecording} variant="secondary" disabled={processing}>

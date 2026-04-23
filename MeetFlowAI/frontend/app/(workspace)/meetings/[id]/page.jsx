@@ -42,7 +42,7 @@ export default function MeetingDetailsPage() {
     if (!meeting) return;
     if (
       !window.confirm(
-        "Eliminar esta reunião e todo o conteúdo gerado? Esta ação não pode ser anulada.",
+        "Excluir esta reunião e todo o conteúdo gerado? Esta ação não pode ser desfeita.",
       )
     ) {
       return;
@@ -79,7 +79,7 @@ export default function MeetingDetailsPage() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>A carregar a reunião…</CardTitle>
+          <CardTitle>Carregando reunião…</CardTitle>
         </CardHeader>
       </Card>
     );
@@ -90,12 +90,12 @@ export default function MeetingDetailsPage() {
       <Card>
         <CardHeader>
           <CardTitle>{meeting.title}</CardTitle>
-          <CardDescription>Idioma detetado: {meeting.detected_language}</CardDescription>
+          <CardDescription>Idioma detectado: {meeting.detected_language}</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-2">
           <Button variant="default" onClick={() => router.push(`/chat?meeting=${meeting.id}`)}>
             <MessageCircle size={16} className="mr-1" />
-            Assistente (ecrã completo)
+            Assistente (tela cheia)
           </Button>
           <Button variant="secondary" onClick={() => exportMeeting("pdf")}>
             Exportar PDF
@@ -108,7 +108,7 @@ export default function MeetingDetailsPage() {
           </Button>
           <Button variant="secondary" onClick={removeMeeting} disabled={deleting} className="ml-auto text-rose-300">
             <Trash2 size={16} className="mr-1" />
-            {deleting ? "A eliminar…" : "Eliminar reunião"}
+            {deleting ? "Excluindo…" : "Excluir reunião"}
           </Button>
         </CardContent>
       </Card>
