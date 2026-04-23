@@ -3,7 +3,7 @@ import tempfile
 
 
 def transcribe_audio_file(file_bytes: bytes, filename: str) -> str:
-    """Transcricao MVP com Whisper local quando disponivel."""
+    """Transcrição MVP com Whisper local quando disponível."""
     try:
         import whisper
 
@@ -16,4 +16,4 @@ def transcribe_audio_file(file_bytes: bytes, filename: str) -> str:
         result = model.transcribe(temp_path)
         return result.get("text", "").strip()
     except Exception:
-        return "Nao foi possivel transcrever localmente. Para teste MVP, envie transcricao em texto na opcao manual."
+        return "Não foi possível transcrever localmente. No MVP, envie a transcrição em texto (modo manual)."

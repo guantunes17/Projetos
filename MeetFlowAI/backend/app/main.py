@@ -1,4 +1,5 @@
 import json
+import os
 
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,10 +17,16 @@ from .transcription import transcribe_audio_file
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="MeetFlow AI MVP")
+# CORS: não use allow_origins=["*"] com allow_credentials=True (comportamento inválido; o browser bloqueia).
+_cors = os.getenv(
+    "CORS_ALLOW_ORIGINS",
+    "http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001",
+)
+_cors_list = [o.strip() for o in _cors.split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=_cors_list,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -41,12 +48,12 @@ def get_current_user(authorization: str = Header(default="")) -> User:
     token = authorization.replace("Bearer ", "").strip()
     payload = decode_token(token)
     if not payload:
-        raise HTTPException(status_code=401, detail="Token invalido ou expirado.")
+        raise HTTPException(status_code=401, detail="Token inválido ou expirado.")
     email = payload.get("sub")
     db = next(get_db())
     user = db.query(User).filter(User.email == email).first()
     if not user:
-        raise HTTPException(status_code=401, detail="Usuario nao encontrado.")
+        raise HTTPException(status_code=401, detail="Utilizador não encontrado.")
     return user
 
 
@@ -65,7 +72,7 @@ def health():
 def login(payload: LoginRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == payload.email).first()
     if not user or not verify_password(payload.password, user.password_hash):
-        raise HTTPException(status_code=401, detail="Credenciais invalidas.")
+        raise HTTPException(status_code=401, detail="Credenciais inválidas.")
     token = create_access_token(subject=user.email)
     return LoginResponse(access_token=token, user_name=user.full_name)
 
@@ -118,13 +125,20 @@ def serialize_meeting(m: Meeting):
 def meeting_detail(meeting_id: int, _: User = Depends(get_current_user), db: Session = Depends(get_db)):
     m = db.query(Meeting).filter(Meeting.id == meeting_id).first()
     if not m:
-        raise HTTPException(status_code=404, detail="Reuniao nao encontrada.")
+        raise HTTPException(status_code=404, detail="Reunião não encontrada.")
     return serialize_meeting(m)
 
 
 @app.post("/api/meetings/process-text")
 def process_text(payload: MeetingCreateText, _: User = Depends(get_current_user), db: Session = Depends(get_db)):
     clean = normalize_transcript(payload.transcript)
+    if not clean:
+        raise HTTPException(
+            status_code=422,
+            detail="A transcrição não pode estar vazia. Cole o texto ou use carregamento/gravação.",
+        )
+    if not (payload.title or "").strip():
+        raise HTTPException(status_code=422, detail="Indique um título para a reunião.")
     language = detect_language(clean)
     structured = structure_meeting(payload.title, clean, language)
 
@@ -157,6 +171,13 @@ async def process_upload(
     content = await file.read()
     transcript = transcribe_audio_file(content, file.filename or "audio.wav")
     clean = normalize_transcript(transcript)
+    if not clean:
+        raise HTTPException(
+            status_code=422,
+            detail="Não foi possível obter texto a partir do ficheiro. Verifique o áudio, o formato ou indique transcrição manual.",
+        )
+    if not (title or "").strip():
+        raise HTTPException(status_code=422, detail="Indique um título para a reunião.")
     language = detect_language(clean)
     structured = structure_meeting(title, clean, language)
 
@@ -183,16 +204,30 @@ async def process_upload(
 def meeting_chat(meeting_id: int, payload: ChatRequest, _: User = Depends(get_current_user), db: Session = Depends(get_db)):
     m = db.query(Meeting).filter(Meeting.id == meeting_id).first()
     if not m:
-        raise HTTPException(status_code=404, detail="Reuniao nao encontrada.")
-    answer = chat_with_meeting(payload.question, serialize_meeting(m))
-    return {"answer": answer}
+        raise HTTPException(status_code=404, detail="Reunião não encontrada.")
+    q = (payload.question or "").strip()
+    if not q:
+        raise HTTPException(status_code=422, detail="Escreva uma pergunta antes de enviar.")
+    result = chat_with_meeting(q, serialize_meeting(m))
+    if isinstance(result, dict):
+        return result
+    return {"answer": result, "suggested_questions": []}
+
+
+@app.delete("/api/meetings/{meeting_id}", status_code=204)
+def delete_meeting(meeting_id: int, _: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    deleted = db.query(Meeting).filter(Meeting.id == meeting_id).delete()
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Reunião não encontrada.")
+    db.commit()
+    return Response(status_code=204)
 
 
 @app.get("/api/meetings/{meeting_id}/export/{fmt}")
 def export_meeting(meeting_id: int, fmt: str, _: User = Depends(get_current_user), db: Session = Depends(get_db)):
     m = db.query(Meeting).filter(Meeting.id == meeting_id).first()
     if not m:
-        raise HTTPException(status_code=404, detail="Reuniao nao encontrada.")
+        raise HTTPException(status_code=404, detail="Reunião não encontrada.")
     data = serialize_meeting(m)
 
     if fmt == "md":
@@ -204,4 +239,4 @@ def export_meeting(meeting_id: int, fmt: str, _: User = Depends(get_current_user
         )
     if fmt == "pdf":
         return Response(build_pdf(data), media_type="application/pdf")
-    raise HTTPException(status_code=400, detail="Formato nao suportado.")
+    raise HTTPException(status_code=400, detail="Formato não suportado.")

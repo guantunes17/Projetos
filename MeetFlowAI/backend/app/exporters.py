@@ -18,7 +18,7 @@ def build_markdown(meeting: dict) -> bytes:
 ## Tarefas
 {meeting['tarefas']}
 
-## Decisoes
+## Decisões
 {meeting['decisoes']}
 
 ## Riscos
@@ -39,9 +39,9 @@ def build_docx(meeting: dict) -> bytes:
     doc.add_paragraph(meeting["ata_formal"])
     doc.add_heading("Tarefas", level=1)
     for task in meeting["tarefas"]:
-        doc.add_paragraph(f"- {task.get('task')} | Responsavel: {task.get('owner')} | Prazo: {task.get('deadline')}")
+        doc.add_paragraph(f"- {task.get('task')} | Responsável: {task.get('owner')} | Prazo: {task.get('deadline')}")
 
-    doc.add_heading("Decisoes", level=1)
+    doc.add_heading("Decisões", level=1)
     for item in meeting["decisoes"]:
         doc.add_paragraph(f"- {item}")
 

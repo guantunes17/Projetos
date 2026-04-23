@@ -2,12 +2,12 @@ import "./globals.css";
 
 export const metadata = {
   title: "MeetFlow AI MVP",
-  description: "Reunioes em atas profissionais com IA",
+  description: "Reuniões transformadas em atas profissionais com IA",
 };
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="pt-BR">
+    <html lang="pt-PT">
       <body>{children}</body>
     </html>
   );

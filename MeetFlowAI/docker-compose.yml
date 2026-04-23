@@ -20,7 +20,8 @@ services:
     container_name: meetflow_frontend
     restart: unless-stopped
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8000
+      # Proxy do Next (server) -> container do backend (evita CORS no browser)
+      MEETFLOW_API_ORIGIN: http://backend:8000
       CHOKIDAR_USEPOLLING: "true"
     volumes:
       - ./frontend:/app

@@ -1,14 +1,17 @@
 import os
 from datetime import datetime, timedelta, timezone
 
+from dotenv import load_dotenv
 from jose import JWTError, jwt
 from passlib.context import CryptContext
+
+load_dotenv()
 
 SECRET_KEY = os.getenv("APP_SECRET_KEY", "meetflow_dev_secret_change_me")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_HOURS = 10
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:

@@ -1,0 +1,21 @@
+---
+description: Planeamento tipo Plan para MeetFlow — caixas de perguntas e modo guiado
+alwaysApply: true
+---
+
+# Planeamento produto / IA / UX (modo perguntas guiadas)
+
+## Por que listas longas não mostram «caixas»
+
+As **caixas clicáveis** dependem da UI do Cursor e de **uma pergunta por turno**. Colar 14 perguntas com opções num único bloque em markdown é só **texto**.
+
+## Comportamento esperado do agente quando o utilizador pede descoberta tipo Plan
+
+1. **Uma pergunta de cada vez.** Esperar pela resposta antes da seguinte.
+2. Preferir ferramentas de formulário quando existirem (pergunta estruturada com opções), para replicar o efeito de «caixa» na medida do possível.
+3. Se o utilizador quiser **rápido** todas de uma vez, avisar explicitamente que será **lista em texto**, não wizard nativo.
+4. Opcional por pergunta: literal **«Outro / especificar»** como opção livre para resposta própria.
+
+## Contexto técnico (breve)
+
+Ficheiros `.plan.md` são **documentos gravados** do plano; não embutem widgets nem histórico clicável das perguntas da sessão.
