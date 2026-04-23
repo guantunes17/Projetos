@@ -2,6 +2,7 @@ import json
 import os
 import time
 from collections import defaultdict, deque
+from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -27,7 +28,6 @@ from .transcription import transcribe_audio_file
 
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="MeetFlow AI MVP")
 DEFAULT_ADMIN_EMAIL = "admin@meetflow.app"
 LEGACY_ADMIN_EMAIL = "admin@meetflow.local"
 LOGIN_WINDOW_SECONDS = 15 * 60
@@ -41,6 +41,17 @@ _cors = os.getenv(
     "http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001",
 )
 _cors_list = [o.strip() for o in _cors.split(",") if o.strip()]
+MAX_UPLOAD_BYTES = int(os.getenv("MAX_UPLOAD_MB", "100")) * 1024 * 1024
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    db = next(get_db())
+    bootstrap_user(db)
+    yield
+
+
+app = FastAPI(title="MeetFlow AI MVP", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_cors_list,
@@ -104,13 +115,9 @@ def get_current_user(authorization: str = Header(default=""), db: Session = Depe
     user = db.query(User).filter(User.email == email).first()
     if not user:
         raise HTTPException(status_code=401, detail="Usuário não encontrado.")
+    if not user.is_active:
+        raise HTTPException(status_code=401, detail="Conta desativada.")
     return user
-
-
-@app.on_event("startup")
-def startup_event():
-    db = next(get_db())
-    bootstrap_user(db)
 
 
 @app.get("/api/health")
@@ -294,6 +301,11 @@ async def process_upload(
     db: Session = Depends(get_db),
 ):
     content = await file.read()
+    if len(content) > MAX_UPLOAD_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"Arquivo muito grande. Limite: {MAX_UPLOAD_BYTES // (1024 * 1024)} MB.",
+        )
     transcript = transcribe_audio_file(content, file.filename or "audio.wav")
     clean = normalize_transcript(transcript)
     if not clean:

@@ -2,8 +2,17 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { CalendarClock, MessageCircle, Trash2 } from "lucide-react";
+import {
+  AlertTriangle,
+  CalendarClock,
+  CheckCircle2,
+  ClipboardList,
+  MessageCircle,
+  Trash2,
+  User,
+} from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
+import ReactMarkdown from "react-markdown";
 
 import { MeetingChat } from "@/components/meetflow/meeting-chat";
 import { useMeetFlow } from "@/components/meetflow/app-context";
@@ -43,11 +52,7 @@ export default function MeetingDetailsPage() {
 
   async function removeMeeting() {
     if (!meeting) return;
-    if (
-      !window.confirm(
-        "Excluir esta reunião e todo o conteúdo gerado? Esta ação não pode ser desfeita.",
-      )
-    ) {
+    if (!window.confirm("Excluir esta reunião e todo o conteúdo gerado? Esta ação não pode ser desfeita.")) {
       return;
     }
     setDeleting(true);
@@ -148,19 +153,19 @@ export default function MeetingDetailsPage() {
             <TabsTrigger value="chat">Chat com a reunião</TabsTrigger>
           </TabsList>
           <TabsContent value="ata">
-            <ContentBlock content={meeting.ata_formal} />
+            <ProseBlock content={meeting.ata_formal} />
           </TabsContent>
           <TabsContent value="resumo">
-            <ContentBlock content={meeting.resumo_executivo} />
+            <ProseBlock content={meeting.resumo_executivo} />
           </TabsContent>
           <TabsContent value="tarefas">
-            <ContentBlock content={JSON.stringify(meeting.tarefas, null, 2)} />
+            <TaskList tasks={meeting.tarefas} />
           </TabsContent>
           <TabsContent value="decisoes">
-            <ContentBlock content={JSON.stringify(meeting.decisoes, null, 2)} />
+            <BulletList items={meeting.decisoes} variant="decision" />
           </TabsContent>
           <TabsContent value="riscos">
-            <ContentBlock content={JSON.stringify(meeting.riscos, null, 2)} />
+            <BulletList items={meeting.riscos} variant="risk" />
           </TabsContent>
           <TabsContent value="chat" className="mt-4">
             <MeetingChat meetingId={meeting.id} token={token} meetingTitle={meeting.title} />
@@ -171,11 +176,113 @@ export default function MeetingDetailsPage() {
   );
 }
 
-function ContentBlock({ content }) {
+function ProseBlock({ content }) {
+  if (!content?.trim()) {
+    return (
+      <Card>
+        <CardContent className="pt-5">
+          <p className="text-sm text-slate-500">Conteúdo não disponível.</p>
+        </CardContent>
+      </Card>
+    );
+  }
   return (
     <Card>
       <CardContent className="pt-5">
-        <pre className="whitespace-pre-wrap text-sm text-slate-200">{content}</pre>
+        <div className="prose prose-invert prose-sm max-w-none prose-headings:mb-2 prose-headings:mt-4 prose-headings:font-semibold prose-headings:text-slate-100 prose-p:mb-3 prose-p:leading-relaxed prose-p:text-slate-200 prose-strong:text-slate-100 prose-li:text-slate-200 prose-li:leading-relaxed">
+          <ReactMarkdown>{content}</ReactMarkdown>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function TaskList({ tasks }) {
+  const items = Array.isArray(tasks) ? tasks : [];
+  if (items.length === 0) {
+    return (
+      <Card>
+        <CardContent className="pt-5">
+          <p className="text-sm text-slate-500">Nenhuma tarefa identificada.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+  return (
+    <Card>
+      <CardContent className="space-y-3 pt-5">
+        {items.map((task, i) => {
+          const hasOwner = task.owner && task.owner !== "—" && task.owner !== "Não identificado";
+          const hasDeadline = task.deadline && task.deadline !== "—" && task.deadline !== "Não citado";
+          return (
+            <div
+              key={i}
+              className="rounded-xl border border-blue-500/15 bg-blue-950/10 p-4 transition-colors hover:border-blue-500/25"
+            >
+              <div className="flex items-start gap-3">
+                <ClipboardList className="mt-0.5 h-4 w-4 shrink-0 text-blue-300" />
+                <p className="text-sm font-medium leading-relaxed text-slate-100">{task.task}</p>
+              </div>
+              {(hasOwner || hasDeadline) && (
+                <div className="mt-2 flex flex-wrap gap-4 pl-7">
+                  {hasOwner && (
+                    <span className="flex items-center gap-1.5 text-xs text-slate-400">
+                      <User className="h-3 w-3 text-lime-400" />
+                      {task.owner}
+                    </span>
+                  )}
+                  {hasDeadline && (
+                    <span className="flex items-center gap-1.5 text-xs text-slate-400">
+                      <CalendarClock className="h-3 w-3 text-amber-400" />
+                      {task.deadline}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </CardContent>
+    </Card>
+  );
+}
+
+function BulletList({ items, variant = "decision" }) {
+  const list = Array.isArray(items) ? items : [];
+  const isRisk = variant === "risk";
+
+  if (list.length === 0) {
+    return (
+      <Card>
+        <CardContent className="pt-5">
+          <p className="text-sm text-slate-500">
+            {isRisk ? "Nenhum risco identificado." : "Nenhuma decisão identificada."}
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardContent className="space-y-2 pt-5">
+        {list.map((item, i) => (
+          <div
+            key={i}
+            className={`flex items-start gap-3 rounded-xl border px-4 py-3 transition-colors ${
+              isRisk
+                ? "border-amber-500/15 bg-amber-950/10 hover:border-amber-500/25"
+                : "border-lime-500/15 bg-lime-950/10 hover:border-lime-500/25"
+            }`}
+          >
+            {isRisk ? (
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+            ) : (
+              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-lime-400" />
+            )}
+            <p className="text-sm leading-relaxed text-slate-200">{item}</p>
+          </div>
+        ))}
       </CardContent>
     </Card>
   );

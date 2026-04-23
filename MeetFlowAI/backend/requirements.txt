@@ -1,5 +1,6 @@
 fastapi
 uvicorn[standard]
+python-dotenv
 python-multipart
 sqlalchemy
 alembic
@@ -12,4 +13,4 @@ pyspellchecker
 httpx
 python-docx
 reportlab
-whisper
+openai-whisper

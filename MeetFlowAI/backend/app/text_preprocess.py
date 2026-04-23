@@ -82,5 +82,5 @@ def preprocess_transcript(raw: str) -> str:
     t = "\n".join(lines)
     t = re.sub(r"\n{3,}", "\n\n", t)
     t = spell_correct_portuguese(t)
-    t = re.sub(r"\s+", " ", t).strip()
+    t = re.sub(r"[ \t]+", " ", t).strip()
     return t

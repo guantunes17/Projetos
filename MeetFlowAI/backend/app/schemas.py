@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 
 
 class LoginRequest(BaseModel):
@@ -15,8 +15,8 @@ class LoginResponse(BaseModel):
 
 
 class MeetingCreateText(BaseModel):
-    title: str
-    transcript: str
+    title: str = Field(..., max_length=200)
+    transcript: str = Field(..., max_length=200_000)
     source_type: str = "manual"
 
 
@@ -36,7 +36,7 @@ class MeetingOut(BaseModel):
 
 
 class ChatRequest(BaseModel):
-    question: str
+    question: str = Field(..., max_length=2_000)
 
 
 class RegisterRequest(BaseModel):

@@ -7,6 +7,19 @@ from reportlab.pdfgen import canvas
 
 
 def build_markdown(meeting: dict) -> bytes:
+    tasks_lines = "\n".join(
+        f"- **{t.get('task', '')}** — Responsável: {t.get('owner', '—')} | Prazo: {t.get('deadline', '—')}"
+        for t in (meeting.get("tarefas") or [])
+    ) or "Nenhuma tarefa identificada."
+
+    decisions_lines = "\n".join(
+        f"- {d}" for d in (meeting.get("decisoes") or [])
+    ) or "Nenhuma decisão identificada."
+
+    risks_lines = "\n".join(
+        f"- {r}" for r in (meeting.get("riscos") or [])
+    ) or "Nenhum risco identificado."
+
     content = f"""# {meeting['title']}
 
 ## Resumo Executivo
@@ -16,13 +29,13 @@ def build_markdown(meeting: dict) -> bytes:
 {meeting['ata_formal']}
 
 ## Tarefas
-{meeting['tarefas']}
+{tasks_lines}
 
 ## Decisões
-{meeting['decisoes']}
+{decisions_lines}
 
 ## Riscos
-{meeting['riscos']}
+{risks_lines}
 
 ---
 Gerado em {datetime.now().isoformat()}
@@ -60,21 +73,42 @@ def build_pdf(meeting: dict) -> bytes:
     width, height = A4
     y = height - 50
 
-    def write_line(text: str, top=15):
+    def write_line(text: str, top: int = 15):
         nonlocal y
         if y < 50:
             pdf.showPage()
             y = height - 50
-        pdf.drawString(40, y, text[:120])
+        pdf.drawString(40, y, str(text)[:120])
         y -= top
 
-    write_line(meeting["title"], 20)
-    write_line("Resumo Executivo:", 18)
-    for line in meeting["resumo_executivo"].split("\n"):
-        write_line(line)
-    write_line("Ata Formal:", 18)
-    for line in meeting["ata_formal"].split("\n"):
-        write_line(line)
+    def write_section(title: str, lines: list[str]):
+        write_line("")
+        write_line(title, 18)
+        for line in lines:
+            write_line(f"  {line}")
+
+    write_line(meeting["title"], 22)
+
+    write_section("Resumo Executivo:", meeting["resumo_executivo"].split("\n"))
+    write_section("Ata Formal:", meeting["ata_formal"].split("\n"))
+
+    write_section(
+        "Tarefas:",
+        [
+            f"- {t.get('task', '')} | Resp: {t.get('owner', '—')} | Prazo: {t.get('deadline', '—')}"
+            for t in (meeting.get("tarefas") or [])
+        ] or ["Nenhuma tarefa identificada."],
+    )
+
+    write_section(
+        "Decisões:",
+        [f"- {d}" for d in (meeting.get("decisoes") or [])] or ["Nenhuma decisão identificada."],
+    )
+
+    write_section(
+        "Riscos:",
+        [f"- {r}" for r in (meeting.get("riscos") or [])] or ["Nenhum risco identificado."],
+    )
 
     pdf.save()
     stream.seek(0)
