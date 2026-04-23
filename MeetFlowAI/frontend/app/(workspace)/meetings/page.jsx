@@ -41,7 +41,7 @@ export default function MeetingsPage() {
       <Card>
         <CardHeader>
           <CardTitle>Histórico de reuniões</CardTitle>
-          <CardDescription>Pesquise por título e aceda aos detalhes processados.</CardDescription>
+          <CardDescription>Pesquise por título e acesse os detalhes processados.</CardDescription>
         </CardHeader>
         <CardContent>
           <Input placeholder="Pesquisar reunião…" value={query} onChange={(e) => setQuery(e.target.value)} />
